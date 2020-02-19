@@ -2,7 +2,16 @@
 #https://www.learnpyqt.com/courses/adanced-ui-features/qscrollarea/
 import pandas
 import argparse
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QPlainTextEdit, QHBoxLayout,QGridLayout
+import sys
+from PyQt5.QtWidgets  import *
+from PyQt5.Qt import *
+import lorem
+
+class QLabelSelect(QLabel):
+    def __init__(self, *args):
+        QLabel.__init__(self, *args)
+        self.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
 def downloadFromSQL():
     pass
 class Data:
@@ -28,18 +37,17 @@ class Data:
         pass
     
 
-import sys
-from PyQt5.Qt import *
-import lorem
-
 class DisplayArea(QVBoxLayout):
     def __init__(self, *args):
         QVBoxLayout.__init__(self, *args)
-        self.text = QLabel(lorem.text())
-        self.scrollArea = QScrollArea(self.text)
+        self.text = QLabelSelect(lorem.text())
+        self.text.setWordWrap(True)
+        self.text.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+        self.scrollArea = QScrollArea()
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setWidget(self.text)
-        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.addWidget(self.scrollArea)
 
         
@@ -49,7 +57,7 @@ class MainWindow(QMainWindow):
         self.cw = QWidget(self)
         
         self.mainLayout = QGridLayout()
-        self.labelPatientAndCase = QLabel('PATIENT')
+        self.labelPatientAndCase = QLabelSelect('PATIENT')
         self.labelPatientAndCase.setAlignment(Qt.AlignCenter)
         self.mainLayout.addWidget(self.labelPatientAndCase, 0, 0, 1, 2)
         
