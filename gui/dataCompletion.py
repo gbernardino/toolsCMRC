@@ -1,8 +1,8 @@
 #https://build-system.fman.io/pyqt5-tutorial
+#https://www.learnpyqt.com/courses/adanced-ui-features/qscrollarea/
 import pandas
 import argparse
-from PyQt5 import QApp
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, , QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QPlainTextEdit, QHBoxLayout,QGridLayout
 def downloadFromSQL():
     pass
 class Data:
@@ -28,34 +28,40 @@ class Data:
         pass
     
 
-
-This is the prior answer from Alvaro Fuentes, with the minor updates necessary for PyQt5.
-
 import sys
 from PyQt5.Qt import *
+import lorem
 
-class MyPopup(QWidget):
-    def __init__(self, mainwin):
-        QWidget.__init__(self)
+class DisplayArea(QVBoxLayout):
+    def __init__(self, *args):
+        QVBoxLayout.__init__(self, *args)
+        self.text = QLabel(lorem.text())
+        self.scrollArea = QScrollArea(self.text)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setWidget(self.text)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.addWidget(self.scrollArea)
 
-        # I want to change the lable1 of MainWindow
-        mainwin.label1.setText('hello')
-
-
+        
 class MainWindow(QMainWindow):
     def __init__(self, *args):
         QMainWindow.__init__(self, *args)
         self.cw = QWidget(self)
-        self.setCentralWidget(self.cw)
         
-        self.
+        self.mainLayout = QGridLayout()
+        self.labelPatientAndCase = QLabel('PATIENT')
+        self.labelPatientAndCase.setAlignment(Qt.AlignCenter)
+        self.mainLayout.addWidget(self.labelPatientAndCase, 0, 0, 1, 2)
         
-        self.btn1 = QPushButton("Click me", self.cw)
-        self.btn1.setGeometry(QRect(50, 50, 100, 30))
-        self.label1 = QLabel("No Commands running", self.cw)
-        self.btn1.clicked.connect(self.doit)
-        self.w = None
+        self.Display = DisplayArea()
+        self.mainLayout.addLayout(self.Display,  1, 0)
 
+        self.dataInput = QLabel( 'hello')
+        self.mainLayout.addWidget(self.dataInput, 1,1)
+
+        
+        self.cw.setLayout(self.mainLayout)
+        self.setCentralWidget(self.cw)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
