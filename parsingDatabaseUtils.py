@@ -60,16 +60,44 @@ def isMaternalRegister(c, registers, raiseError = False):
     TODO: double check that everything is OK
     - Several updates on newborn
     """
+    unknown = 'NA'
     asunto = remove_diacritics(str(c.Asunto)).lower()
     try:
         if 'neonato' in asunto or 'nacido' in asunto: 
-            return  False
-        elif 'Registro del recién nacido' == registros.loc[int(c.Padre)].Asunto:
-            return False
+            return  'newborn'
+        elif 'ingreso de urgencias' in asunto or 'notas de ingreso a piso' in asunto:
+            return 'mother'
+        elif c.Padre == c.Padre:
+            return isMaternalRegister(registers.loc[c.Padre], registers, raiseError)
         else:
-            return True
+            return unknown
     except KeyError as e:
         if raiseError:
             raise(e)
         else:
-            return True
+            return unknown
+
+
+def parseAntecedentes(t):
+    t = t.upper().strip()
+    antecedentes = []
+    negative = ['NO', 'NIEG', 'SIN DATOS', 'NEGATIVO', 'NO REFIERE', 'SIN']
+    
+    if 'TBC' in t or 'TUBERC' in t:
+        antecedentes.append('TBC')
+    if 'HIPERTEN' in t or 'HTA' in t:
+        antecedentes.append('HTA')
+    if any([n in t for n in negative]) or t == '':
+        antecedentes.append('None')
+    if 'DIAB' in t or 'DM' in t:
+        antecedentes.append('Diabetes')
+    if 'ASMA' in t:
+        antecedentes.append('Asma')
+    if 'CARDIO' in t:
+        antecedentes.append('Cardo')
+    if 'PREECLAMPSIA' in t:
+        antecedentes.append('Preclampsia')
+
+    # TODO: check that no other word means anything
+
+    return antecedentes
