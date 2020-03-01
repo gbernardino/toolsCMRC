@@ -131,6 +131,7 @@ Parse epicrisis
 - ECHOS
 - PARACLINICS (TO SOME EXTENT)
 """
+classificationProcedures = {'H0165': 'o', 'H0193': 'o', 'H2120': 'o', 'H2379': 'o', 'H2383': 'o', 'H2386': 'o', 'H2407': 'o', 'H2415': 'o', 'H2595': 'o', 'H2684': 'o', 'H2849': 'o', 'H2852': 'o', 'H2880': 'o', 'H2882': 'o', 'H2884': 'o', 'H2892': 'o', 'H2901': 'o', 'H2904': 'o', 'H2910': 'o', 'H2916': 'o', 'H2959': 'o', 'H2963': 'o', 'H2974': 'a', 'H2975': 'a', 'H3038': 'o', 'H3065': 'o', 'H3066': 'o', 'H3078': 'o', 'H3089': 'p', 'H3092': 'p', 'H3094': 'p', 'H3099': 'a', 'H3100': 'a', 'H3108': 'o', 'H3109': 'o', 'H3111': 'o', 'H3114': 'o', 'H3118': 'o', 'H4421': 'o', 'H4494': 'o', 'H4496': 'o', 'HE020': 'o'}
 
 def parseEchographies(t, cleanText = False):
     """
@@ -187,126 +188,137 @@ def parseGPCA_and_fum(text):
             'fum_Data' : parsedFUM,
             'parsedGPCA' : parsedGPCA}
 
-def getNivelN1(data):
-"""
-Parse the data relative to the mother and general pregnancy (from patient info, epicrisis and admision to the emergency room)
-"""        
-res = {}
-res['VAR_0006'] = data.motherData.FechaNac
-#Etnia
-if data.motherData.Etnia == 1:
-    res['VAR_0011'] = 'B'
-#Raizal, palenquero, negros/mulatos
-elif data.motherData.Etnia in [3,4,5]:   
-    res['VAR_0011'] = 'D'
-#Otras etnias?
-elif data.motherData.Etnia in [2]:
-    res['VAR_0011'] = 'E'
-    
-#Estudios y alfabetiacion
-if data.motherData.Escolaridad in [2, 3, 4,5,6]:
-    res['VAR_0012'] = 'B'
-elif data.motherData.Escolaridad in [1, 8]:
-    res['VAR_0012'] = 'A'
-    
-#TODO: Que hacer con pre-escolar? 
-if data.motherData.Escolaridad in [8, 1]:
-    res['VAR_0013'] = 'A'
-elif data.motherData.Escolaridad in [3]:
-    res['VAR_0013'] = 'B'
-elif data.motherData.Escolaridad in [4, 5]:
-    res['VAR_0013'] = 'C'
-elif data.motherData.Escolaridad in [6]:
-    res['VAR_0013'] = 'D'
-    
-if data.motherData.EstadoCivil in ['Casado']:
-    res['VAR_0015'] = 'A'
-elif data.motherData.EstadoCivil in ['Soltero']:
-    res['VAR_0015'] = 'C'
-elif parsingDatabaseUtils.remove_diacritics(
-    data.motherData.EstadoCivil) in ['Union Libre']:
-    res['VAR_0015'] = 'D'
-    
-res['VAR_0018'] = 'CMRC'
-res['VAR_0019'] = data.motherData.Identificacion 
+def getMotherData(data):
+    """
+    Parse the data relative to the mother and general pregnancy (from patient info, epicrisis and admision to the emergency room)
+    """        
+    res = {}
+    res['VAR_0006'] = data.motherData.FechaNac
+    #Etnia
+    if data.motherData.Etnia == 1:
+        res['VAR_0011'] = 'B'
+    #Raizal, palenquero, negros/mulatos
+    elif data.motherData.Etnia in [3,4,5]:   
+        res['VAR_0011'] = 'D'
+    #Otras etnias?
+    elif data.motherData.Etnia in [2]:
+        res['VAR_0011'] = 'E'
 
-# Antecedentes
-if data.ingreso is not None:
-    etIngreso = ET.fromstring(data.ingreso.RegistroXML)
-    
-    #Antecedentes familiares
-    aFamiliares = findInXML("AntecedentesFamiliares", etIngreso)
-    antecedentes = parseAntecedentes(aFamiliares)
-    if ('None' in antecedentes and len(antecedentes) > 1) or len(antecedentes) == 0:
-        """
-        Something weird happened
-        """
-        pass
-    else:
-        res['VAR_0020'] = 'B' if 'TBC' in antecedentes else 'A'
-        res['VAR_0022'] = 'B' if 'Diabetes' in antecedentes else 'A'
-        res['VAR_0024'] = 'B' if 'HTA' in antecedentes else 'A'
-        res['VAR_0026'] = 'B' if 'Preeclampsia' in antecedentes else 'A'
-        res['VAR_0028'] = 'B' if 'Eclampsia' in antecedentes else 'A'
-        res['VAR_0030'] = 'B' if 'Otros' in antecedentes else 'A'
+    #Estudios y alfabetiacion
+    if data.motherData.Escolaridad in [2, 3, 4,5,6]:
+        res['VAR_0012'] = 'B'
+    elif data.motherData.Escolaridad in [1, 8]:
+        res['VAR_0012'] = 'A'
 
-    #Personales solo si no hay nada
-    #TODO: a bit of parsing could be done, but I do not have time
-    
-    #Height and weight
-    try:
-        res['Var_0055'] = float(findInXML("Peso", etIngreso))
-        res['Var_0056'] = float(findInXML("Talla", etIngreso)) * 100 - 100
-    except:
-        pass
-if data.epicrisis is not None:    
-    et = ET.fromstring(data.epicrisis.RegistroXML)
-    antececedentesText = findInXML('AntecedentesHTML', et)
-    antececedentesText = cleanString(antececedentesText).lower()
-    antececedentesText = removeWords(antececedentesText, ['a', 'de', 'el', 'que', 'para', 'y'])
-    
-    # G P C A : Double check, sometimes it is wrong and FUM
-    gpca_fum = parsingDatabaseUtils.parseGPCA_and_fum(antececedentesText)
-    if gpca_fum['GPCA_OK']:
-        gpca_fum['VAR_0040'] = int(res['G'])
-        gpca_fum['VAR_0042'] = int(res['P'])
-        gpca_fum['VAR_0047'] = int(res['C'])
-        gpca_fum['VAR_0041'] = int(res['A'])
-        
-    if gpca_fum['fum_OK']:
-        if  gpca_fum['fum'] in ['?', 'no']:
-            res['VAR_0059'] =  'A'
-            res['VAR_0057'] = '07/06/1954'
+    #TODO: Que hacer con pre-escolar? 
+    if data.motherData.Escolaridad in [8, 1]:
+        res['VAR_0013'] = 'A'
+    elif data.motherData.Escolaridad in [3]:
+        res['VAR_0013'] = 'B'
+    elif data.motherData.Escolaridad in [4, 5]:
+        res['VAR_0013'] = 'C'
+    elif data.motherData.Escolaridad in [6]:
+        res['VAR_0013'] = 'D'
+
+    if data.motherData.EstadoCivil in ['Casado']:
+        res['VAR_0015'] = 'A'
+    elif data.motherData.EstadoCivil in ['Soltero']:
+        res['VAR_0015'] = 'C'
+    elif remove_diacritics(
+        data.motherData.EstadoCivil) in ['Union Libre']:
+        res['VAR_0015'] = 'D'
+
+    res['VAR_0018'] = 'CMRC'
+    res['VAR_0019'] = data.motherData.Identificacion 
+
+    # Antecedentes
+    if data.ingreso is not None:
+        etIngreso = ET.fromstring(data.ingreso.RegistroXML)
+
+        #Antecedentes familiares
+        aFamiliares = findInXML("AntecedentesFamiliares", etIngreso)
+        antecedentes = parseAntecedentes(aFamiliares)
+        if ('None' in antecedentes and len(antecedentes) > 1) or len(antecedentes) == 0:
+            """
+            Something weird happened
+            """
+            pass
         else:
-            res['VAR_0059'] = 'B'
-            res['VAR_0057'] = '/'.join(parseDate(gpca_fum['fum']))
-        
-    #Echos
-    m = parseEchographies(antececedentesText)
-    if m is False:
-        res['no_echo'] = 'no_echo_confirmed'
-        res['VAR_0060'] = 'A'
-    elif isinstance(m, list):
-        res['no_echo'] =  'echo_confirmed'
-        #TODO: parse date
-    else:
-        res['no_echo'] =  'no_information'
-        
-    #PARACLINICS
-    #TODO
-    
-    #Fecha ingreso / egreso
+            res['VAR_0020'] = 'B' if 'TBC' in antecedentes else 'A'
+            res['VAR_0022'] = 'B' if 'Diabetes' in antecedentes else 'A'
+            res['VAR_0024'] = 'B' if 'HTA' in antecedentes else 'A'
+            res['VAR_0026'] = 'B' if 'Preeclampsia' in antecedentes else 'A'
+            res['VAR_0028'] = 'B' if 'Eclampsia' in antecedentes else 'A'
+            res['VAR_0030'] = 'B' if 'Otros' in antecedentes else 'A'
 
-    
-    
-    # MORBILIDAD:
-    
-#Ingreso
-res['VAR_0183'] =data.casoDesc.FechaHora
+        #Personales solo si no hay nada
+        #TODO: a bit of parsing could be done, but I do not have time
+
+        #Height and weight
+        try:
+            res['VAR_0055'] = float(findInXML("Peso", etIngreso))
+            res['VAR_0056'] = float(findInXML("Talla", etIngreso)) * 100 - 100
+        except:
+            pass
+    if data.epicrisis is not None:    
+        et = ET.fromstring(data.epicrisis.RegistroXML)
+        antececedentesText = findInXML('AntecedentesHTML', et)
+        antececedentesText = cleanString(antececedentesText).lower()
+        antececedentesText = removeWords(antececedentesText, ['a', 'de', 'el', 'que', 'para', 'y'])
+
+        # G P C A : Double check, sometimes it is wrong and FUM
+        gpca_fum = parseGPCA_and_fum(antececedentesText)
+        if gpca_fum['GPCA_OK']:
+            gpca_fum['VAR_0040'] = int(res['G'])
+            gpca_fum['VAR_0042'] = int(res['P'])
+            gpca_fum['VAR_0047'] = int(res['C'])
+            gpca_fum['VAR_0041'] = int(res['A'])
+
+        if gpca_fum['fum_OK']:
+            if  gpca_fum['fum'] in ['?', 'no']:
+                res['VAR_0059'] =  'A'
+                res['VAR_0057'] = '07/06/1954'
+            else:
+                res['VAR_0059'] = 'B'
+                res['VAR_0057'] = '/'.join(parseDate(gpca_fum['fum']))
+
+        #Echos
+        m = parseEchographies(antececedentesText)
+        if m is False:
+            res['no_echo'] = 'no_echo_confirmed'
+            res['VAR_0060'] = 'A'
+        elif isinstance(m, list):
+            res['no_echo'] =  'echo_confirmed'
+            #TODO: parse date
+        else:
+            res['no_echo'] =  'no_information'
+
+        #PARACLINICS
+        #TODO
 
 
-#Parto aborto
-res['VAR_0182'] = 'A' if classificationProcedures[data.procTypeId] == 'p'  else ''
-res['VAR_0182'] = 'B' if classificationProcedures[data.procTypeId] == 'a'  else ''
+        #Fecha ingreso / egreso
 
-return res
+
+
+        # MORBILIDAD:
+
+        #Ingreso
+        res['VAR_0183'] =data.casoDesc.FechaHora
+
+
+    #Parto aborto
+    res['VAR_0182'] = 'A' if classificationProcedures[data.procTypeId] == 'p'  else ''
+    res['VAR_0182'] = 'B' if classificationProcedures[data.procTypeId] == 'a'  else ''
+
+    return res
+
+
+def getDateFromQuirurgicDescription(txt):
+    """
+
+    """
+
+    pattern = 'fecha %s a las ([0-9]+):([0-9]+)'  % date
+    res = re.findall(pattern, txt)
+    return res
