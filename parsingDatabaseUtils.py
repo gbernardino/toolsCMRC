@@ -35,14 +35,21 @@ def remove_diacritics(text):
     For example "Héllô" will become "Hello".
     Useful for comparing strings in an accent-insensitive fashion.
     """
+    text = pars.unescape(str(text))
     normalized = unicodedata.normalize("NFKD", str(text))
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 def cleanString(text, removeChars = '-:,;', removeWords = []):
+    text = pars.unescape(str(text))
+    text = cleanWhites.sub(' ', text)
+
+    #clean html tags, when they are with with &lt; &gt;
+    text = re.sub('\&lt\;.*?\&gt\;', ' ',  text)
+    text = re.sub('\<.*?\>', ' ',  text)
+
     for c in removeChars:
         text = re.sub('(?<![0-9])\%s' %c, ' ',  text)
         text = re.sub('\%s(?![0-9])' %c, ' ',  text)
-
     text = cleanWhites.sub(' ', text)
     for w in removeWords:
         text = text.replace(' ' + w + ' ', ' ')
@@ -187,6 +194,23 @@ def parseGPCA_and_fum(text):
             'GPCA_OK' : GPCA_OK,
             'fum_Data' : parsedFUM,
             'parsedGPCA' : parsedGPCA}
+def getAlta(r):
+    et = ET.fromstring(r.RegistroXML)
+    t = findInXML('DescripcionNota', et)
+    txt = cleanString(t).lower()
+
+    if 'alta voluntaria' in txt:
+        return 'altaVoluntaria'
+    elif 'cuidados intermedios' in txt:
+        return 'cuidadosIntermedios'
+    elif 'cuidados basicos' in txt:
+        return 'cuidadosBasicos'
+    elif 'alojamiento conjunto'in txt:
+        return 'alojamientoConjunto'
+    elif 'alta medica'  in txt or 'alta hospitalaria' in txt:
+        return 'altaMedica'
+    else:
+        return 'unknown'
 
 def getMotherData(data):
     """
@@ -253,7 +277,15 @@ def getMotherData(data):
 
         #Personales solo si no hay nada
         #TODO: a bit of parsing could be done, but I do not have time
-
+        findInXML('aFarmacologicos', etIngreso) == "true"
+        findInXML('aGinecoObstetrico', etIngreso)  == "true"
+        findInXML('aHospitalarios', etIngreso)  == "true"
+        findInXML('aTraumaticos', etIngreso)  == "true"
+        findInXML('aPatologicos', etIngreso)  == "true"
+        if findInXML('aQuirurgicos', etIngreso)  == "false":
+            res['VAR_0032'] = 'A'
+        findInXML('aToxico', etIngreso)  == "true"
+        findInXML('aTranfusionales', etIngreso)  == "true"
         #Height and weight
         try:
             res['VAR_0055'] = float(findInXML("Peso", etIngreso))
@@ -297,20 +329,38 @@ def getMotherData(data):
         #TODO
 
 
-        #Fecha ingreso / egreso
-
-
 
         # MORBILIDAD:
 
         #Ingreso
         res['VAR_0183'] =data.casoDesc.FechaHora
 
+        #Fecha / motivo egreso
+        lastRegister = data.getMotherLastState()
+        alta = getAlta(lastRegister)
+        if alta != 'unknown':
+            if alta == 'altaMedica':
+                res['VAR_0379'] =lastRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0382'] = 'A'
+            elif alta == 'altaVoluntaria':
+                res['VAR_0379'] =lastRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0382'] = 'C'
+            elif alta == 'cuidadosBasicos':
+                res['VAR_0379'] =lastRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0381'] = 'Cuidados basicos'
+                res['VAR_0382'] = 'C'
+
+            elif alta == 'cuidadosIntermedios':
+                res['VAR_0379'] =lastRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0381'] = 'Cuidados intermedios'
+                res['VAR_0382'] = 'C'
 
     #Parto aborto
     res['VAR_0182'] = 'A' if classificationProcedures[data.procTypeId] == 'p'  else ''
     res['VAR_0182'] = 'B' if classificationProcedures[data.procTypeId] == 'a'  else ''
 
+   
+   
     return res
 
 
@@ -321,4 +371,163 @@ def getDateFromQuirurgicDescription(txt):
 
     pattern = 'fecha %s a las ([0-9]+):([0-9]+)'  % date
     res = re.findall(pattern, txt)
+    return res
+
+
+
+def findDesgarros(text):
+    text = text.replace(' de ', ' ').replace(' se ', ' ')
+    
+    removeWords = ['lateral', 'izquierda', 'derecha', 'superior', 'inferior', 'medial']
+    for w in removeWords:
+        text = text.replace(' %s ' % w, ' ')
+
+    #Perdida de sangre
+    bloodLost = re.findall('perdida estimada sangre(?::)? ([0-9]+) (?:cc|ml)', text)
+    ver = '(?:eviden[a-z]*|observ[a-z]*|vis[a-z]*|encont[a-z]*|presen[a-z]*)'   #diferentes manaeras de escribir ver
+    negative = ['(?:sin|no) (?:%s )?desgar' % ver]
+    positive = 'desgar[a-z]* (?:[a-z]* |(:?pared )?vag[a-z]* )?(?:sangr[a-z]* |no sangrant[a-z]* )?grado (i|ii|iii|1|2|3)'
+    positiveUnidentified = '(?:%s )?desgar' % ver
+
+    if re.findall('(:?%s)' % '|'.join(negative), text) or ('desgarro' not in text): #and 'sin complicaciones' in text):
+        desgarro = 'no'
+    elif re.findall(positive, text):
+        desgarro = re.findall(positive, text)[0][1]
+        if desgarro == 'i':
+            desgarro = '1'
+        elif desgarro == 'ii':
+            desgarro = '2'
+        elif desgarro == 'iii':
+            desgarro = '3'
+
+    elif re.findall(positiveUnidentified, text):
+        desgarro = 'yes-NoGrade'
+    else:
+        desgarro = 'unknown'
+    return desgarro
+
+#####
+# Info from newborn
+####
+
+def getInformationFromProcedureDescription(data):
+    """
+    Get information from the procedure
+    """
+    etDescripcion = ET.fromstring(data.procedure.XmlDescripcion)
+    txtDescription = remove_diacritics(cleanString(
+        etDescripcion.find('detalle/procedimientos/procedimiento/descripcion').text.lower()))
+    res = {}
+    
+    #Fecha parto
+    # TODO: beware of laboors that are near 12 am
+    try:
+        fechaParto = dateparser.parse(parsingDatabaseUtils.findInXML('fechaCirugia', etDescripcion))
+        horaFinCirugia  = dateparser.parse(parsingDatabaseUtils.findInXML('horaFin', etDescripcion)) #If nothing else is found, a candidate for birth
+        res['VAR_0284'] = str(fechaParto.year) + '/' +  str(fechaParto.month)  + '/' + str(fechaParto.day)
+        res['VAR_0285'] = str(horaFinCirugia.hour) + ':' +  str(horaFinCirugia.minute) 
+    except TypeError:
+        pass
+    # Presentacion
+    if 'cefalic' in txtDescription:
+        res['VAR_202'] = 'A'
+    # Posicion parto
+    if 'en posicion de litotomia' in txtDescription:
+        res['VAR_029'] = 'C'
+    elif 'decubito dorsal' in txtDescription:
+        res['VAR_029'] = 'C'
+
+    # Desgarros
+    gradoDesgarros = findDesgarros(txtDescription)
+    if gradoDesgarros == 'no':
+        res['VAR_0293'] = 'X'
+    elif gradoDesgarros == 'yes-NoGrade':
+        res['VAR_0294'] = '0'
+    elif gradoDesgarros != 'unknown':
+         res['VAR_0294'] = gradoDesgarros
+            
+    # Nacimiento vivo / muerto
+    newbornPattern = '(rec[a-z]+ na[a-z]+|feto|producto)'
+    if  re.findall('%s (unico )?vivo' % newbornPattern, txtDescription):
+        res['VAR_0282'] = 'A'
+    elif re.findall('%s (muerto|obitado|sin signos vitales)' % newbornPattern, txtDescription):
+        res['VAR_0282'] = 'D'
+    
+    # C-section / vaginal
+    if data.procTypeId == 'H3089':
+        res['VAR_0287'] = 'A'
+    elif data.procTypeId == 'H3094':
+        res['VAR_0287'] = 'B'
+
+    # Placenta completa/ retenida
+    if re.findall('(extrae|obtiene) placenta (tip[a-z]+ [a-z]+ )?completa', txtDescription):
+        res['VAR_0297'] = 'B'
+        res['VAR_0298'] = 'A'
+        
+    # Peso / medidas 
+    if re.findall('peso (%s)' % floatParse, txtDescription):
+        res['VAR_0311'] = re.findall('peso (%s)' % floatParse, txtDescription)[0]
+    if re.findall('talla (%s)' % floatParse, txtDescription):
+        res['VAR_0314'] = re.findall('talla (%s)' % floatParse, txtDescription)[0]
+
+    #APGAR: TODO, easier to get from newborn registration, otherwise is dead.
+    
+    # TODO: defectos
+    if 'sin malformaciones evidentes' in txtDescription:
+        res['VAR_0335'] = 'A'
+    return res
+
+def getNewbornData(data, idNewBornRegister, debug = False):
+    register = data.registrosRecienNacido[idNewBornRegister][idNewBornRegister]
+
+    etRegistro = ET.fromstring(register.RegistroXML)
+    res = {}
+    #prettyPrintXML(register.RegistroXML)
+    res['VAR_0284']  = findInXML('InputText_FechaHoraNacimiento', etRegistro)
+    res['VAR_0283'] = findInXML('ASPxTimeEdit_HoraNacimiento', etRegistro)
+    res['VAR_0198'] = findInXML('InputText_EdadGestac', etRegistro)
+    EG2 = findInXML('InputText_EdadGestacDubowitzModificado', etRegistro)
+    res['partoVag'] = findInXML('TexTarea_PartoVaginal', etRegistro) == 'SI'
+    partoC = findInXML('TexTarea_PartoCesaria', etRegistro) == 'SI'
+    res['VAR_0321'] = findInXML('InputText_APGAR', etRegistro)
+    if findInXML('ASPxComboBox_Sexo', etRegistro) == 'Masculino':
+        res['VAR_0310'] = ' B'
+    elif findInXML('ASPxComboBox_Sexo', etRegistro) == 'Femenino':
+        res['VAR_0310'] = ' A'
+    elif findInXML('ASPxComboBox_Sexo', etRegistro):
+        res['VAR_0310'] = ' C'
+    vivo = findInXML('InputRadio_VM', etRegistro) == 'Vivo'
+    
+    #Antrhopometrics
+    res['VAR_0311'] = findInXML('InputText_Peso', etRegistro)
+    res['VAR_0314'] = findInXML('InputText_Talla', etRegistro)
+    res['VAR_0313'] = findInXML('InputText_CC', etRegistro)
+    
+    #As a double check of GAPC
+    G = findInXML('InputText_ObstetricosGestaciones', etRegistro)
+    A = findInXML('InputText_ObstetricosAbortos', etRegistro)
+    P = findInXML('InputText_ObstetricosPartos', etRegistro)
+    C = findInXML('InputText_ObstetricosCesareas', etRegistro)
+    
+    
+    #Paraclinic check
+    for r in data.registrosRecienNacido[idNewBornRegister].values():
+        et = ET.fromstring(r.RegistroXML)
+        #prettyPrintXML(r.RegistroXML)
+        pos = ['react', '\+', 'pos']
+        neg = ['no', '-', 'neg']
+        try:
+            #if debug:
+            #    print(findInXML( 'DescripcionNota', et))
+            txtNotas = cleanString(remove_diacritics(findInXML( 'DescripcionNota', et))).lower()
+            if debug:
+                print(txtNotas)
+            r = re.findall('vdrl\s+(%s)' % '|'.join(pos + neg), txtNotas) 
+            if r:
+                res['VDRL'] = 'positive' if r[0] in pos else 'negative'
+                break
+        except Exception as e:
+            pass
+    #Hospital discharge, and where
+
     return res
