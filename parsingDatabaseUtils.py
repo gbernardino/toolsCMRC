@@ -11,11 +11,12 @@ import pandas, numpy as np,re
 import collections, unicodedata
 import xml, itertools, xml.etree.ElementTree as ET
 from html.parser import HTMLParser
+import dateparser
 
 floatParse = '[0-9]*[\.,]?[0-9]+'
 pars =HTMLParser()
 cleanWhites = re.compile("[^\S\n]+")
-
+fullCleanTxt  = lambda s: cleanString(remove_diacritics(str(s))).lower() 
 
 def findInXML(s, et): 
     if isinstance(et, str):
@@ -24,6 +25,7 @@ def findInXML(s, et):
     if r is not None:
         return r.get('ValorCampo')
     return None
+
 def prettyPrintXML(s):
     r = xml.dom.minidom.parseString(s) #r.RegistroXML)
     print(pars.unescape(r.toprettyxml()))
@@ -39,13 +41,13 @@ def remove_diacritics(text):
     normalized = unicodedata.normalize("NFKD", str(text))
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
-def cleanString(text, removeChars = '-:,;', removeWords = []):
+def cleanString(text, removeChars = '-:,;\.', removeWords = []):
     text = pars.unescape(str(text))
     text = cleanWhites.sub(' ', text)
 
     #clean html tags, when they are with with &lt; &gt;
-    text = re.sub('\&lt\;.*?\&gt\;', ' ',  text)
-    text = re.sub('\<.*?\>', ' ',  text)
+    #text = re.sub('\&lt\;.*?\&gt\;', ' ',  text)
+    text = re.sub('\<[^<]*?\>', ' ',  text)
 
     for c in removeChars:
         text = re.sub('(?<![0-9])\%s' %c, ' ',  text)
@@ -194,11 +196,7 @@ def parseGPCA_and_fum(text):
             'GPCA_OK' : GPCA_OK,
             'fum_Data' : parsedFUM,
             'parsedGPCA' : parsedGPCA}
-def getAlta(r):
-    et = ET.fromstring(r.RegistroXML)
-    t = findInXML('DescripcionNota', et)
-    txt = cleanString(t).lower()
-
+def getAlta(txt, newborn = False ):
     if 'alta voluntaria' in txt:
         return 'altaVoluntaria'
     elif 'cuidados intermedios' in txt:
@@ -207,8 +205,10 @@ def getAlta(r):
         return 'cuidadosBasicos'
     elif 'alojamiento conjunto'in txt:
         return 'alojamientoConjunto'
-    elif 'alta medica'  in txt or 'alta hospitalaria' in txt:
+    elif 'alta medica'  in txt or 'alta hospitalaria' in txt or ('alta' in txt and newborn):
         return 'altaMedica'
+    elif ' uci' in txt or 'cuidados intensivo' in txt:
+        return 'uci'
     else:
         return 'unknown'
 
@@ -329,9 +329,13 @@ def getMotherData(data):
         #TODO
 
 
-
         # MORBILIDAD:
 
+        #Induccion de parto
+        # MD0430 -> oxitocina para inducir parto
+        # sintosinal
+        # pitusina
+        # misoprostal, prostalglandiac
         #Ingreso
         res['VAR_0183'] =data.casoDesc.FechaHora
 
@@ -422,8 +426,8 @@ def getInformationFromProcedureDescription(data):
     #Fecha parto
     # TODO: beware of laboors that are near 12 am
     try:
-        fechaParto = dateparser.parse(parsingDatabaseUtils.findInXML('fechaCirugia', etDescripcion))
-        horaFinCirugia  = dateparser.parse(parsingDatabaseUtils.findInXML('horaFin', etDescripcion)) #If nothing else is found, a candidate for birth
+        fechaParto = dateparser.parse(findInXML('fechaCirugia', etDescripcion))
+        horaFinCirugia  = dateparser.parse(findInXML('horaFin', etDescripcion)) #If nothing else is found, a candidate for birth
         res['VAR_0284'] = str(fechaParto.year) + '/' +  str(fechaParto.month)  + '/' + str(fechaParto.day)
         res['VAR_0285'] = str(horaFinCirugia.hour) + ':' +  str(horaFinCirugia.minute) 
     except TypeError:
@@ -504,12 +508,13 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     res['VAR_0313'] = findInXML('InputText_CC', etRegistro)
     
     #As a double check of GAPC
-    G = findInXML('InputText_ObstetricosGestaciones', etRegistro)
-    A = findInXML('InputText_ObstetricosAbortos', etRegistro)
-    P = findInXML('InputText_ObstetricosPartos', etRegistro)
-    C = findInXML('InputText_ObstetricosCesareas', etRegistro)
+    res['VAR_0040'] = findInXML('InputText_ObstetricosGestaciones', etRegistro)
+    res['VAR_0041'] = findInXML('InputText_ObstetricosAbortos', etRegistro)
+    res['VAR_0046'] = findInXML('InputText_ObstetricosPartos', etRegistro)
+    res['VAR_0047'] = findInXML('InputText_ObstetricosCesareas', etRegistro)
     
-    
+    res['sufrimientoFetal'] = findInXML('TexTarea_SufrimientoFetal', etRegistro)
+
     #Paraclinic check
     for r in data.registrosRecienNacido[idNewBornRegister].values():
         et = ET.fromstring(r.RegistroXML)
@@ -524,10 +529,40 @@ def getNewbornData(data, idNewBornRegister, debug = False):
                 print(txtNotas)
             r = re.findall('vdrl\s+(%s)' % '|'.join(pos + neg), txtNotas) 
             if r:
-                res['VDRL'] = 'positive' if r[0] in pos else 'negative'
+                res['VAR_0343'] = 'B' if r[0] in pos else 'A'
                 break
         except Exception as e:
             pass
-    #Hospital discharge, and where
+        #Hospital discharge, and reason
+        dischargeRegister = data.getNewbornLastState(idNewBornRegister)
+        if dischargeRegister is not None:
+            et = ET.fromstring(dischargeRegister.RegistroXML)
+            txt = cleanString(remove_diacritics(findInXML( 'DescripcionNota', et))).lower()
+            txt = removeWords(txt, ['a', 'de', 'el', 'que', 'para'])
+        else:
+            dischargeRegister = data.registrosRecienNacido[idNewBornRegister][idNewBornRegister]
+            et = ET.fromstring(dischargeRegister.RegistroXML)
+            txt = cleanString(remove_diacritics(findInXML( 'TexTarea_PlanTratamiento', et))).lower()
+            txt = removeWords(txt, ['a', 'de', 'el', 'que', 'para'])
+
+
+        alta = getAlta(txt, newborn = True)
+        if alta != 'unknown':
+            if alta == 'altaMedica':
+                res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+            elif alta == 'altaVoluntaria':
+                res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+            elif alta == 'cuidadosBasicos':
+                res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+            elif alta == 'cuidadosIntermedios':
+                res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+            elif alta == 'uci':
+                res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+
+            elif alta == 'alojamientoConjunto':
+                res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0381'] = 'Cuidados intermedios'
+                res['VAR_0330'] = 'A'
+
 
     return res
