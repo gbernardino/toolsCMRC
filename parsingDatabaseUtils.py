@@ -337,7 +337,7 @@ def getMotherData(data):
         # pitusina
         # misoprostal, prostalglandiac
         #Ingreso
-        res['VAR_0183'] =data.casoDesc.FechaHora
+        res['VAR_0183'] = data.casoDesc.FechaHora.split('.')[0]
 
         #Fecha / motivo egreso
         lastRegister = data.getMotherLastState()
@@ -481,6 +481,25 @@ def getInformationFromProcedureDescription(data):
         res['VAR_0335'] = 'A'
     return res
 
+def parseAPGAR(s):
+    if s != s:
+        return False
+    s = re.sub('(?<=[0-9])/10', '', s)
+    s = re.sub('[^0-9]', " ", s)
+    r = s.split()
+    if len(r) == 1:
+        return [r[0]]
+    if len(r) == 2:
+        return r
+    elif len(r) == 3:
+        return [r[0], r[1] if r[1] != '5' else r[2]]
+    elif len(r) == 4 and r[1] == '1' and r[3] == '5':
+        return [r[0], r[2]]
+    elif len(r) == 4 and r[0] == '1' and r[2] == '5':
+        return [r[1], r[3]]
+    else:
+        return False
+
 def getNewbornData(data, idNewBornRegister, debug = False):
     register = data.registrosRecienNacido[idNewBornRegister][idNewBornRegister]
 
@@ -493,13 +512,22 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     EG2 = findInXML('InputText_EdadGestacDubowitzModificado', etRegistro)
     res['partoVag'] = findInXML('TexTarea_PartoVaginal', etRegistro) == 'SI'
     partoC = findInXML('TexTarea_PartoCesaria', etRegistro) == 'SI'
-    res['VAR_0321'] = findInXML('InputText_APGAR', etRegistro)
+    apgar =  parseAPGAR(findInXML('InputText_APGAR', etRegistro))
+    try:
+        res['VAR_0321'] = apgar[0]
+    except:
+        pass
+    try:
+        res['VAR_0322'] = apgar[1]
+    except:
+        pass
+
     if findInXML('ASPxComboBox_Sexo', etRegistro) == 'Masculino':
-        res['VAR_0310'] = ' B'
+        res['VAR_0310'] = 'B'
     elif findInXML('ASPxComboBox_Sexo', etRegistro) == 'Femenino':
-        res['VAR_0310'] = ' A'
+        res['VAR_0310'] = 'A'
     elif findInXML('ASPxComboBox_Sexo', etRegistro):
-        res['VAR_0310'] = ' C'
+        res['VAR_0310'] = 'C'
     vivo = findInXML('InputRadio_VM', etRegistro) == 'Vivo'
     
     #Antrhopometrics
