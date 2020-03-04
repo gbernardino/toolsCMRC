@@ -24,7 +24,7 @@ class BirthDataset:
     - newborn discharge
     """
     posibilitiesAlta = ['alta', 'salida', 'egreso', 'remision', 'traslado']
-    def __init__(self, caso, casoDesc, procedure, registros, pacientes, ordenNacimiento = 0):
+    def __init__(self, caso, casoDesc, procedure, registros, pacientes, entriesInfirmary, ordenNacimiento = 0):
         self.casoID = caso 
         self.casoDesc = casoDesc
         self.procedure = procedure
@@ -33,6 +33,7 @@ class BirthDataset:
         self.registersMother = []
         self.registersNewborn = []
         self.registersUnassigned = []
+        self.entriesInfirmaryMother = list(entriesInfirmary.itertuples())
         self.epicrisis = None
         self.ingreso = None
         self.motherData = pacientes.loc[str(registros.iloc[0].NumeroHistoria)]

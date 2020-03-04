@@ -277,15 +277,15 @@ def getMotherData(data):
 
         #Personales solo si no hay nada
         #TODO: a bit of parsing could be done, but I do not have time
-        findInXML('aFarmacologicos', etIngreso) == "true"
+        aFarm = findInXML('aFarmacologicos', etIngreso) == "true"
         findInXML('aGinecoObstetrico', etIngreso)  == "true"
-        findInXML('aHospitalarios', etIngreso)  == "true"
-        findInXML('aTraumaticos', etIngreso)  == "true"
-        findInXML('aPatologicos', etIngreso)  == "true"
+        aHosp = findInXML('aHospitalarios', etIngreso)  == "true"
+        aTraum = findInXML('aTraumaticos', etIngreso)  == "true"
+        aPathol = findInXML('aPatologicos', etIngreso)  == "true"
         if findInXML('aQuirurgicos', etIngreso)  == "false":
             res['VAR_0032'] = 'A'
-        findInXML('aToxico', etIngreso)  == "true"
-        findInXML('aTranfusionales', etIngreso)  == "true"
+        aToxic = findInXML('aToxico', etIngreso)  == "true"
+        aTransf = findInXML('aTranfusionales', etIngreso)  == "true"
         #Height and weight
         try:
             res['VAR_0055'] = float(findInXML("Peso", etIngreso))
@@ -325,14 +325,16 @@ def getMotherData(data):
         else:
             res['no_echo'] =  'no_information'
 
-        #PARACLINICS
-        #TODO
+        # MORBILIDAD: (see analysis of hospital discharge)
 
-
-        # MORBILIDAD:
-
-        #Induccion de parto
+        #Used medication
         # MD0430 -> oxitocina para inducir parto
+        medication = findInXML('MedicamentosAdministrado', et)
+        res['oxitocina'] = 'MD0430' in medication
+        res['penilicilina'] = 'MD0441' in medication
+        res['sulfatoFerroso'] = 'MD0284' in medication
+        res['magnesio'] = any( [m in medication for m in ['IM5038', 'IM5392', 'MD0028', 'MD0351', 'MD70149']])
+
         # sintosinal
         # pitusina
         # misoprostal, prostalglandiac
@@ -578,14 +580,22 @@ def getNewbornData(data, idNewBornRegister, debug = False):
         if alta != 'unknown':
             if alta == 'altaMedica':
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0372'] = 'alta'
             elif alta == 'altaVoluntaria':
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0372'] = 'altaVol'
+
             elif alta == 'cuidadosBasicos':
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0372'] = 'cuidadosBasicos'
+
             elif alta == 'cuidadosIntermedios':
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0372'] = 'cuidadosIntermedios'
+
             elif alta == 'uci':
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
+                res['VAR_0372'] = 'UCI'
 
             elif alta == 'alojamientoConjunto':
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]

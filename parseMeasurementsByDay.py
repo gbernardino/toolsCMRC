@@ -1,5 +1,6 @@
-from parsingDatabaseUtils import cleanString, floatParse, fullCleanTxt, findInXML
+from parsingDatabaseUtils import cleanString, floatParse, fullCleanTxt, findInXML, removeWords, parseDate
 import pandas, numpy as np,re
+import collections, datetime
 import xml, itertools, xml.etree.ElementTree as ET
 
 
@@ -47,7 +48,7 @@ def parseVitalSignsFromRegister(r):
     """
     res = []
     et = ET.fromstring(r.RegistroXML)
-    fecha = r.FechaAsignacionRegistro
+    fecha = r.FechaAsignacionRegistro.split()[0]
     txt = fullCleanTxt(findInXML('DescripcionNota', et))
 
     # Pressure
@@ -80,7 +81,7 @@ def parseVitalSignsFromRegister(r):
             if rr:
                 rr = rr[0]
     if rr:
-        res += [('rr', fecha, fc)]
+        res += [('rr', fecha, rr)]
 
     # T    
     temperature = findInXML('Temperatura', et)
@@ -90,26 +91,42 @@ def parseVitalSignsFromRegister(r):
             if temperature:
                 temperature = temperature[0]
     if temperature:
-        res += [('T', fecha, temperatureture)]
+        res += [('T', fecha, temperature)]
     return res
 
-def getVitalSignsFromEntries(entry):
+def getVitalSignsFromEntry(entry):
     """
     m dataframe with all entries of a single case at a given date
     """
-    res = {}
+    res = ()
+    dateRegister = entry.FechaRegistro.split()[0]
     if entry.CodSignoVitalTipo == 'PRSI' or entry.CodSignoVitalTipo == 'PAS':
-        res= ('Pas', date, m.Valor)
+        res= ('Pas', dateRegister, entry.Valor)
     elif entry.CodSignoVitalTipo == 'PRDI' or entry.CodSignoVitalTipo == 'PAD':
-        res =('Pad', date, m.Valor)
-    elif m.CodSignoVitalTipo in ['FRCA', 'FC']:
-        res = ('hr', date, m.Valor)
-    elif (m.CodSignoVitalTipo in ['FRRE', 'FR']:
-        res = ('rr', date, m.Valor)
-    elif m.CodSignoVitalTipo == 'T':
-        res = ('T', date, m.Valor)
+        res =('Pad', dateRegister, entry.Valor)
+    elif entry.CodSignoVitalTipo in ['FRCA', 'FC']:
+        res = ('hr', dateRegister, entry.Valor)
+    elif entry.CodSignoVitalTipo in ['FRRE', 'FR']:
+        res = ('rr', dateRegister, entry.Valor)
+    elif entry.CodSignoVitalTipo == 'T':
+        res = ('T', dateRegister, entry.Valor)
     return res
-                
+
+def getAllVitalSigns(data):
+    vitalSigns = []
+    for r in data.registersMother:
+        vitalSigns += parseVitalSignsFromRegister(r)
+    
+    for e in data.entriesInfirmaryMother:
+        entryParsed = getVitalSignsFromEntry(e)
+        if entryParsed:
+            vitalSigns += [entryParsed]
+    return vitalSigns
+
+meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
+meses = meses + list(map(lambda s: s[:3], meses))
+sep= '\s*[,;:]?\s*'
+separadorFecha = '(?:[\.\\/-]|DE|DEL|\s)'
 date =  '\(?' +  '((?:[0-9]+)'+ sep + separadorFecha + sep + '(?:[0-9]+|%s)'%  '|'.join(meses) + \
                        sep + separadorFecha + sep + '(?:[0-9]+))' + '\)?' 
 
@@ -138,13 +155,13 @@ sep= '\s*[,;:]?\s*'
 separadorFecha = '(?:[\.\\/-]|DE|DEL|\s)'
 date =  ' \(?' +  '((?:[0-9]|[0-3][0-9])'+ sep + separadorFecha + sep + '(?:[0-9]+|%s)'%  '|'.join(meses) + \
                        sep + separadorFecha + sep + '(?:[0-9]+))' + '\)?' 
-def parseParaclinicsFromText(txt):
-    results = {}
+def parseParaclinicsFromText(txt, date):
+    results = []
     #haematology
     for p, v in hematology.items():
         hematologyRes = re.findall('%s (%s)[^x]' % (v, floatParse), txt, re.IGNORECASE)
         if hematologyRes:
-            results[p] = hematologyRes[0][1]
+            results += [(p, date, hematologyRes[0][1])]
 
     #sifilis
     sif1 = ' ' + vdrl + " (%s)" % '|'.join(pos + neg)
@@ -152,9 +169,9 @@ def parseParaclinicsFromText(txt):
     sif2 = ' ' + prt + " (%s)" % '|'.join(pos + neg)    
     searchSif2 = re.findall(sif2, txt, re.IGNORECASE)
     if searchSif1:
-        results['vdrl'] =searchSif1[0][1] in pos
+        results += [('vdrl', date, searchSif1[0][1] in pos)]
     if searchSif2:
-        results['prt'] =searchSif2[0][1] in pos
+        results += [('prt', date, searchSif2[0][1] in pos)]
     # TODO: vih
     return results
           
@@ -162,17 +179,16 @@ def parseParaclinicsBeforeHospitalisation(r):
     lastDate = None
     if not isinstance(r, str):
         rET = ET.fromstring(r.RegistroXML)
-        rTxt = parsingDatabaseUtils.fullCleanTxt(parsingDatabaseUtils.findInXML('AntecedentesHTML', rET))
-        rTxt = parsingDatabaseUtils.removeWords(rTxt, ['de', 'y', 'a', 'el', 'los'])
+        rTxt = fullCleanTxt(findInXML('AntecedentesHTML', rET))
+        rTxt = removeWords(rTxt, ['de', 'y', 'a', 'el', 'los'])
     else:
         rTxt = r
         
         
     lastDate = None
-    results = collections.defaultdict(dict)
-    results['text'] = rTxt
+    results = []
     if re.findall('(no|sin|ni) (prese[a-z]*|tien[a-z]*|tra[a-z]*)(\s)*para', rTxt):
-        results['sinParaclinicos'] = True
+        results  += [('controlesPrenatal', 'sinControles', 'True' )]
         return results
     
     for i, l in enumerate(rTxt.splitlines()):
@@ -183,37 +199,34 @@ def parseParaclinicsBeforeHospitalisation(r):
         #dFiltered = [dd for dd in dFiltered if dd]
 
         if len(d) == 1.:
-            dateParsed = parsingDatabaseUtils.parseDate(d[0])
+            dateParsed = parseDate(d[0])
             if dateParsed:
                 #lastDate ='%02d/%02d/%d' %(dateParsed.day, dateParsed.month, dateParsed.year)
                 lastDate = '/'.join(dateParsed)
         elif len(d):
             lastDate = None
             
-            
         if len(d) <= 1 and lastDate:
-            r = parseParaclinicsBeforeHospitalisation(l)
-            if r:
-              results[lastDate] = r
+            r = parseParaclinicsFromText(l, lastDate)
+            results += r
     return results
                 
-def paraclinicsToDF(p):
-    res = {}
-    res['noParaclinicalTestsConfirmed'] = 'sinParaclinicos' in p
-    i = 0
-    for date in sorted(p.keys()):
-        if date  in ['sinParaclinicos', 'text']: 
-            continue
-        res['day_%d' % i] = date
-        for k, v in p[date].items():
-            res['day_%d' % i + k] = v 
-        i += 1
-    return res
-
-def getAllMotherMeasurementsAndParaclinics(data):
-    resultsEpi = parseParaclinicsBeforeHospitalisation(data.epicrisis)
+def getParaClinicsHospitalisation(data): 
+    resultNotes = []
     for r in data.registersMother:
-        txt = findInXML('NotaTexto' , r)
+        txt = findInXML('DescripcionNota' , r.RegistroXML)
         if not txt:
           continue
-        noteResult = 
+        txt = fullCleanTxt(txt)
+        noteResult = parseParaclinicsFromText(txt, r.FechaAsignacionRegistro.split()[0])
+        if noteResult:
+            resultNotes += noteResult
+    return resultNotes
+
+def getAllMotherParaclinics(data):
+    if data.epicrisis is not None:
+        resultsEpi = parseParaclinicsBeforeHospitalisation(data.epicrisis)
+    else:
+        resultsEpi = []
+    resultNotes = getParaClinicsHospitalisation(data)
+    return resultsEpi + resultNotes
