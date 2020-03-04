@@ -471,10 +471,11 @@ def getInformationFromProcedureDescription(data):
         res['VAR_0298'] = 'A'
         
     # Peso / medidas 
+    # Remove the points cause they create problems (they use points every 3 digits sometimes)
     if re.findall('peso (%s)' % floatParse, txtDescription):
-        res['VAR_0311'] = re.findall('peso (%s)' % floatParse, txtDescription)[0]
+        res['VAR_0311'] = re.findall('peso (%s)' % floatParse, txtDescription)[0].replace('.', '').replace(',', '')
     if re.findall('talla (%s)' % floatParse, txtDescription):
-        res['VAR_0314'] = re.findall('talla (%s)' % floatParse, txtDescription)[0]
+        res['VAR_0314'] = re.findall('talla (%s)' % floatParse, txtDescription)[0].replace(',', '.')
 
     #APGAR: TODO, easier to get from newborn registration, otherwise is dead.
     
@@ -533,9 +534,9 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     vivo = findInXML('InputRadio_VM', etRegistro) == 'Vivo'
     
     #Antrhopometrics
-    res['VAR_0311'] = findInXML('InputText_Peso', etRegistro)
-    res['VAR_0314'] = findInXML('InputText_Talla', etRegistro)
-    res['VAR_0313'] = findInXML('InputText_CC', etRegistro)
+    res['VAR_0311'] = findInXML('InputText_Peso', etRegistro).replace('.', '').replace(',', '')
+    res['VAR_0314'] = findInXML('InputText_Talla', etRegistro).replace(',', '.')
+    res['VAR_0313'] = findInXML('InputText_CC', etRegistro).replace(',', '.')
     
     #As a double check of GAPC
     res['VAR_0040'] = findInXML('InputText_ObstetricosGestaciones', etRegistro)
