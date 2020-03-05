@@ -250,9 +250,9 @@ def getMotherData(data):
         res['VAR_0015'] = 'C'
     elif remove_diacritics(
         data.motherData.EstadoCivil) in ['Union Libre']:
-        res['VAR_0015'] = 'D'
+        res['VAR_0015'] = 'B'
 
-    res['VAR_0018'] = 'CMRC'
+    res['VAR_0018'] = '806001061-8'
     res['VAR_0019'] = data.motherData.Identificacion 
 
     # Antecedentes
