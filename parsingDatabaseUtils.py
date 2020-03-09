@@ -328,16 +328,41 @@ def getMotherData(data):
         # MORBILIDAD: (see analysis of hospital discharge)
 
         #Used medication
-        # MD0430 -> oxitocina para inducir parto
+        # MD0430 -> oxitocina para inducir parto / reducir hemorrageas
         medication = findInXML('MedicamentosAdministrado', et)
+        #MedicationByDate
+        medicationByDate = medication.split('Fecha:')
+        medicationByDate = map(lambda s: s.strip(), medicationByDate)
+        medicationByDate = {m.split()[0] : m for m in medicationByDate if m}
+        
         res['oxitocina'] = 'MD0430' in medication
         res['penilicilina'] = 'MD0441' in medication
         res['sulfatoFerroso'] = 'MD0284' in medication
         res['magnesio'] = any( [m in medication for m in ['IM5038', 'IM5392', 'MD0028', 'MD0351', 'MD70149']])
 
+        #Antibiotics
+        #cefradina
+        res['cefradina'] = any( [m in medication for m in ['MD0097', 'MD0098', 'MD0879']])
+        res['ampicilina'] = any( [m in medication for m in ['IM5018', 'IM5235','MD0046','MD0047',
+        'MD0048','MD0049','MD0050','MD0051']])
+        res['cefalopina'] = any( [m in medication for m in ['IM5338', 'MD0095']])
+        #CEFAZOLINA
+        res['cefazolina']= any( [m in medication for m in ['MD0096']])
+        #Transfusion
+        res['plasma']  = any( [m in medication for m in ['MD0460']])
+
+        #anestesia local
+        res['lidocaina']  = any( [m in medication for m in ['IM5072','IM5109','IM5365','IM5418','MD0332','MD0333','MD0334','MD0335','MD0336','MD0337','MD0338','MD0679']])
+        res['roxitaina']  = any( [m in medication for m in ['MD0677', 'MD0678', 'MD0680']])
+  
+
+        #anestesia regional
+        res['bupinet']  = any( [m in medication for m in ['139555', '218170-2', 'MD0078']])
         # sintosinal
         # pitusina
         # misoprostal, prostalglandiac
+
+
         #Ingreso
         res['VAR_0183'] = data.casoDesc.FechaHora.split('.')[0]
 
@@ -456,9 +481,19 @@ def getInformationFromProcedureDescription(data):
     newbornPattern = '(rec[a-z]+ na[a-z]+|feto|producto)'
     if  re.findall('%s (unico )?vivo' % newbornPattern, txtDescription):
         res['VAR_0282'] = 'A'
-    elif re.findall('%s (muerto|obitado|sin signos vitales)' % newbornPattern, txtDescription):
+    elif re.findall('%s (muerto|sin signos vitales)' % newbornPattern, txtDescription):
         res['VAR_0282'] = 'D'
-    
+    elif re.findall('%s (obitado)' % newbornPattern, txtDescription) or 'obito' in txtDescription:
+        res['VAR_0282'] = 'B'
+    elif 'mortinato' in  txtDescription:
+        res['VAR_0282'] = 'C'
+
+    # OxitocinaTDP
+    if 'oxitocina' in txtDescription:
+        res['VAR_0300'] = 'B'
+    else:
+        res['VAR_0300'] = 'A'
+
     # C-section / vaginal
     if data.procTypeId == 'H3089':
         res['VAR_0287'] = 'A'
@@ -469,7 +504,10 @@ def getInformationFromProcedureDescription(data):
     if re.findall('(extrae|obtiene) placenta (tip[a-z]+ [a-z]+ )?completa', txtDescription):
         res['VAR_0297'] = 'B'
         res['VAR_0298'] = 'A'
-        
+    elif re.findall('(extrae|obtiene) placenta (tip[a-z]+ [a-z]+ )?incompleta', txtDescription):
+        res['VAR_0297'] = 'A'
+        res['VAR_0298'] = 'A'
+
     # Peso / medidas 
     # Remove the points cause they create problems (they use points every 3 digits sometimes)
     if re.findall('peso (%s)' % floatParse, txtDescription):
@@ -602,6 +640,4 @@ def getNewbornData(data, idNewBornRegister, debug = False):
                 res['VAR_0425'] =dischargeRegister.FechaAsignacionRegistro.split()[0]
                 res['VAR_0381'] = 'Cuidados intermedios'
                 res['VAR_0330'] = 'A'
-
-
     return res
