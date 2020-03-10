@@ -9,7 +9,7 @@ def similarNewbornRegister(reg1, reg2):
     Check whether two registers are actually the same, check antropometric parameters.
     """
     et1 = ET.fromstring(reg1.RegistroXML)
-    et2 = ET.fromstring(reg1.RegistroXML)
+    et2 = ET.fromstring(reg2.RegistroXML)
     parametersToCheck = ['InputText_Peso', 'InputText_Talla', 'InputText_CC', 'InputText_CT']
     return all([parsingDatabaseUtils.findInXML(p, et1) == parsingDatabaseUtils.findInXML(p, et2) for p in parametersToCheck])
 
@@ -47,14 +47,14 @@ class BirthDataset:
                 self.registersNewborn.append(reg)
                 self.registrosRecienNacido[newbornRegisterRoot][rId] = reg
             #Ignore the ones that are registro de incapacidad (#46), or a link to the description of a procedure(#145)
-            elif reg.CodigoRegistro not in [145, 46]:
+            elif reg.CodigoRegistro not in [145, 46] and reg.Asunto != 'CTC':
                 #print(caso, reg.Asunto)
                 self.registersUnassigned.append(reg)
             if 'Epicrisis' in str(reg.Asunto):
                 self.epicrisis = reg
             if 'Ingreso de Urgencias' == reg.Asunto:
                 self.ingreso = reg
-                
+        
         self.cleanRegistersNewBorn(registros)
         #Find discharge of baby
         self.newbornDischarge = list(filter(lambda s:

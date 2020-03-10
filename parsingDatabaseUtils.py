@@ -197,6 +197,8 @@ def parseGPCA_and_fum(text):
             'fum_Data' : parsedFUM,
             'parsedGPCA' : parsedGPCA}
 def getAlta(txt, newborn = False ):
+    if txt is None:
+        txt = ''
     if 'alta voluntaria' in txt:
         return 'altaVoluntaria'
     elif 'cuidados intermedios' in txt:
@@ -614,7 +616,8 @@ def getNewbornData(data, idNewBornRegister, debug = False):
             txt = cleanString(remove_diacritics(findInXML( 'TexTarea_PlanTratamiento', et))).lower()
             txt = removeWords(txt, ['a', 'de', 'el', 'que', 'para'])
 
-
+        if txt is None:
+            txt = ''
         alta = getAlta(txt, newborn = True)
         if alta != 'unknown':
             if alta == 'altaMedica':
