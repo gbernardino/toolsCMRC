@@ -338,28 +338,45 @@ def getMotherData(data):
         medicationByDate = {m.split()[0] : m for m in medicationByDate if m}
         
         res['oxitocina'] = 'MD0430' in medication
-        res['penilicilina'] = 'MD0441' in medication
+        res['penilicilinaSifilis'] = 'MD0441' in medication
         res['sulfatoFerroso'] = 'MD0284' in medication
         res['magnesio'] = any( [m in medication for m in ['IM5038', 'IM5392', 'MD0028', 'MD0351', 'MD70149']])
+        res['VAR_0443'] = 'B' if res['magnesio'] else 'A'
+        res['VAR_0444'] = 'B' if res['magnesio'] else 'A'
 
         #Antibiotics
         #cefradina
+        #cefalozina
+        #cefalozina
+
         res['cefradina'] = any( [m in medication for m in ['MD0097', 'MD0098', 'MD0879']])
         res['ampicilina'] = any( [m in medication for m in ['IM5018', 'IM5235','MD0046','MD0047',
         'MD0048','MD0049','MD0050','MD0051']])
         res['cefalopina'] = any( [m in medication for m in ['IM5338', 'MD0095']])
-        #CEFAZOLINA
         res['cefazolina']= any( [m in medication for m in ['MD0096']])
+
+        if res['cefradina'] or res['ampicilina'] or res['cefalopina'] or res['cefalozina']:
+            res['VAR_0301'] = 'B'
+        else:
+            res['VAR_0301'] = 'B'
         #Transfusion
         res['plasma']  = any( [m in medication for m in ['MD0460']])
 
         #anestesia local
         res['lidocaina']  = any( [m in medication for m in ['IM5072','IM5109','IM5365','IM5418','MD0332','MD0333','MD0334','MD0335','MD0336','MD0337','MD0338','MD0679']])
         res['roxitaina']  = any( [m in medication for m in ['MD0677', 'MD0678', 'MD0680']])
-  
+        if res['lidocaina'] or res['roxitaina']:
+            res['VAR_0303'] = 'B'
+        else:
+            res['VAR_0303'] = 'A'
 
         #anestesia regional
         res['bupinet']  = any( [m in medication for m in ['139555', '218170-2', 'MD0078']])
+        if res['bupinet']:
+            res['VAR_0404'] = 'B'
+        else:
+            res['VAR_0404'] = 'A'
+        #Anestesia general
         # sintosinal
         # pitusina
         # misoprostal, prostalglandiac
@@ -387,7 +404,10 @@ def getMotherData(data):
                 res['VAR_0379'] =lastRegister.FechaAsignacionRegistro.split()[0]
                 res['VAR_0381'] = 'Cuidados intermedios'
                 res['VAR_0382'] = 'C'
-
+        #Edad maternal
+        res['VAR_0009'] =  dateparser.parse(data.epicrisis.FechaAsignacionRegistro )-  dateparser.parse(res['VAR_0006'])
+        res['VAR_0009'] = int(res['VAR_0009'].days/365.25)
+        res['VAR_0010'] = 'A' if res['VAR_0009'] >= 15 and 35 >= res['VAR_0009'] else 'B' 
     #Parto aborto
     res['VAR_0182'] = 'A' if classificationProcedures[data.procTypeId] == 'p'  else ''
     res['VAR_0182'] = 'B' if classificationProcedures[data.procTypeId] == 'a'  else ''
@@ -406,7 +426,19 @@ def getDateFromQuirurgicDescription(txt):
     res = re.findall(pattern, txt)
     return res
 
+def getBloodLoss(text):
+    text = text.replace(' de ', ' ').replace(' se ', ' ')
+    
+    removeWords = ['lateral', 'izquierda', 'derecha', 'superior', 'inferior', 'medial']
+    for w in removeWords:
+        text = text.replace(' %s ' % w, ' ')
 
+    #Perdida de sangre
+    bloodLost = re.findall('perdida estimada sangre(?::)? ([0-9]+) (?:cc|ml)', text)
+    try:
+        return bloodLost[0]
+    except:
+        return None
 
 def findDesgarros(text):
     text = text.replace(' de ', ' ').replace(' se ', ' ')
@@ -416,7 +448,6 @@ def findDesgarros(text):
         text = text.replace(' %s ' % w, ' ')
 
     #Perdida de sangre
-    bloodLost = re.findall('perdida estimada sangre(?::)? ([0-9]+) (?:cc|ml)', text)
     ver = '(?:eviden[a-z]*|observ[a-z]*|vis[a-z]*|encont[a-z]*|presen[a-z]*)'   #diferentes manaeras de escribir ver
     negative = ['(?:sin|no) (?:%s )?desgar' % ver]
     positive = 'desgar[a-z]* (?:[a-z]* |(:?pared )?vag[a-z]* )?(?:sangr[a-z]* |no sangrant[a-z]* )?grado (i|ii|iii|1|2|3)'
@@ -470,6 +501,16 @@ def getInformationFromProcedureDescription(data):
     elif 'decubito dorsal' in txtDescription:
         res['VAR_029'] = 'C'
 
+    #Cordon umbilical
+    if 'se pinza y corta cordon umbilical' in txtDescription:
+        res['VAR_0299'] = 'A'
+    #Episotomia
+    if 'episiotomia' in txtDescription:
+        res['VAR_0292'] = 'B'
+    #Reanimacion TODO
+
+    #Ocitodicos TODO
+
     # Desgarros
     gradoDesgarros = findDesgarros(txtDescription)
     if gradoDesgarros == 'no':
@@ -478,7 +519,9 @@ def getInformationFromProcedureDescription(data):
         res['VAR_0294'] = '0'
     elif gradoDesgarros != 'unknown':
          res['VAR_0294'] = gradoDesgarros
-            
+    
+    #Sangre
+    res['perdidaEstimadaSangre'] = getBloodLoss(txtDescription)
     # Nacimiento vivo / muerto
     newbornPattern = '(rec[a-z]+ na[a-z]+|feto|producto)'
     if  re.findall('%s (unico )?vivo' % newbornPattern, txtDescription):
@@ -555,6 +598,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     EG2 = findInXML('InputText_EdadGestacDubowitzModificado', etRegistro)
     res['partoVag'] = findInXML('TexTarea_PartoVaginal', etRegistro) == 'SI'
     partoC = findInXML('TexTarea_PartoCesaria', etRegistro) == 'SI'
+    res['VAR_0190'] = 'A' if res['partoVag'] else 'B'
     apgar =  parseAPGAR(findInXML('InputText_APGAR', etRegistro))
     try:
         res['VAR_0321'] = apgar[0]
