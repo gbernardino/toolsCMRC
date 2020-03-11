@@ -347,13 +347,12 @@ def getMotherData(data):
         #Antibiotics
         #cefradina
         #cefalozina
-        #cefalozina
 
         res['cefradina'] = any( [m in medication for m in ['MD0097', 'MD0098', 'MD0879']])
         res['ampicilina'] = any( [m in medication for m in ['IM5018', 'IM5235','MD0046','MD0047',
         'MD0048','MD0049','MD0050','MD0051']])
         res['cefalopina'] = any( [m in medication for m in ['IM5338', 'MD0095']])
-        res['cefazolina']= any( [m in medication for m in ['MD0096']])
+        res['cefalozina']= any( [m in medication for m in ['MD0096']])
 
         if res['cefradina'] or res['ampicilina'] or res['cefalopina'] or res['cefalozina']:
             res['VAR_0301'] = 'B'

@@ -49,6 +49,7 @@ actionsDiagnosis['D464'] = 'VAR_0620 = B' #ANEMIA REFRACTARIA, SIN OTRA ESPECIFI
 actionsDiagnosis['D500'] = 'VAR_0620 = B' #ANEMIA POR DEFICIENCIA DE HIERRO SECUNDARIA A PERDIDA DE SANGRE (CRONICA)
 actionsDiagnosis['D508'] = 'VAR_0620 = B' #OTRAS ANEMIAS POR DEFICIENCIA DE HIERRO
 actionsDiagnosis['D509'] = 'VAR_0620 = B' #ANEMIA POR DEFICIENCIA DE HIERRO SIN OTRA ESPECIFICACION
+actionsDiagnosis['D531'] = 'VAR_0620 = B' #OTRAS ANEMIAS MEGALOBLASTICAS, NO CLASIFICADAS EN OTRA PARTE
 actionsDiagnosis['D538'] = 'VAR_0620 = B' #OTRAS ANEMIAS NUTRICIONALES ESPECIFICADAS
 actionsDiagnosis['D539'] = 'VAR_0620 = B' #ANEMIA NUTRICIONAL, NO ESPECIFICADA
 actionsDiagnosis['D570'] = 'VAR_0621 = B' #ANEMIA FALCIFORME CON CRISIS
@@ -265,6 +266,7 @@ actionsDiagnosis['O751'] = 'VAR_0514 = B' #CHOQUE DURANTE O DESPUES DEL TRABAJO 
 actionsDiagnosis['O752'] = '' #PIREXA DURANTE EL TRABAJO DE PARTO, NO CLASIFICADA EN OTRA PARTE
 actionsDiagnosis['O757'] = '' #PARTO VAGINAL POSTERIOR A UNA CESAREA PREVIA
 actionsDiagnosis['O800'] = 'VAR_0202 = A' #PARTO UNICO ESPONTANEO, PRESENTACION CEFALICA DE VERTICE
+actionsDiagnosis['0800'] = actionsDiagnosis['O800'] 
 actionsDiagnosis['O801'] = '' #PARTO UNICO ESPONTANEO, PRESENTACION DE NALGAS O PODALICA
 actionsDiagnosis['O808'] = '' #PARTO UNICO ESPONTANEO, OTRAS PRESENTACIONES
 actionsDiagnosis['O809'] = '' #PARTO UNICO ESPONTANEO, SIN OTRA ESPECIFICACION
@@ -388,13 +390,3 @@ actionsDiagnosis['Z980'] = '' #ESTADO DE DERIVACION INTESTINAL O ANASTOMOSIS
 actionsDiagnosis['Z988'] = '' #OTROS ESTADOS POSTQUIRURGICOS ESPECIFICADOS
 actionsDiagnosis['Z998'] = '' #DEPENDENCIA DE OTRAS MAQUINAS Y DISPOSITIVOS CAPACITANTES
 
-
-def parseDiagnosis(allCodes):
-    res = {}
-    allInstructions = []
-    for c in allCodes:
-        allInstructions += actionsDiagnosis[c].split(';')
-    for c in filter(lambda s: s, allInstructions):
-        rhs, lhs = c.split('=')
-        res[rhs.strip()] = lhs.strip()
-    return res

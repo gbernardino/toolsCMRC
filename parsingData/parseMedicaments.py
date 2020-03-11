@@ -32,7 +32,7 @@ actionMedicament["MD0378"] = "" # METOCLOPRAMIDA CLORHIDRATO
 actionMedicament["MD0483"] = "" # RANITIDINA CLORHIDRATO  
 actionMedicament["MD70052"] = "" # OXITETRACICLINA + POLIMIXINA B OFTALMICA (Terramicina) 
 actionMedicament["N02BB02"] = "" # DIPIRONA 
-actionMedicament["MD0098"] = "" # CEFRADINA  
+actionMedicament["MD0098"] = "MEOW = A" # CEFRADINA  
 actionMedicament["MD0046"] = "" # AMPICILINA  
 actionMedicament["IM5059"] = "" # BUPIVACAINA+DEXTROSA (BUPIROP PESADO) 
 actionMedicament["IM5073"] = "" # ETILEFRINA 
