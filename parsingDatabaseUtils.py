@@ -12,6 +12,7 @@ import collections, unicodedata
 import xml, itertools, xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 import dateparser
+from parsingData.procedures import classificationProcedures
 
 floatParse = '[0-9]*[\.,]?[0-9]+'
 pars =HTMLParser()
@@ -140,7 +141,6 @@ Parse epicrisis
 - ECHOS
 - PARACLINICS (TO SOME EXTENT)
 """
-classificationProcedures = {'H0165': 'o', 'H0193': 'o', 'H2120': 'o', 'H2379': 'o', 'H2383': 'o', 'H2386': 'o', 'H2407': 'o', 'H2415': 'o', 'H2595': 'o', 'H2684': 'o', 'H2849': 'o', 'H2852': 'o', 'H2880': 'o', 'H2882': 'o', 'H2884': 'o', 'H2892': 'o', 'H2901': 'o', 'H2904': 'o', 'H2910': 'o', 'H2916': 'o', 'H2959': 'o', 'H2963': 'o', 'H2974': 'a', 'H2975': 'a', 'H3038': 'o', 'H3065': 'o', 'H3066': 'o', 'H3078': 'o', 'H3089': 'p', 'H3092': 'p', 'H3094': 'p', 'H3099': 'a', 'H3100': 'a', 'H3108': 'o', 'H3109': 'o', 'H3111': 'o', 'H3114': 'o', 'H3118': 'o', 'H4421': 'o', 'H4494': 'o', 'H4496': 'o', 'HE020': 'o'}
 
 def parseEchographies(t, cleanText = False):
     """
@@ -539,10 +539,12 @@ def getInformationFromProcedureDescription(data):
         res['VAR_0300'] = 'A'
 
     # C-section / vaginal
-    if data.procTypeId == 'H3089':
+    if data.procTypeId == 'H3089' or data.procTypeId == 'H3092':
         res['VAR_0287'] = 'A'
     elif data.procTypeId == 'H3094':
         res['VAR_0287'] = 'B'
+    elif data.procTypeId == 'H3085':
+        res['VAR_0287'] = 'C'
 
     # Placenta completa/ retenida
     if re.findall('(extrae|obtiene) placenta (tip[a-z]+ [a-z]+ )?completa', txtDescription):

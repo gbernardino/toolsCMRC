@@ -1,4 +1,7 @@
 actionMedicament = {} 
+actionMedicament["MD0431"] = "" # Oxiticina
+actionMedicament["IM5081"] = "" # AGUJA ESPINAL TIPO PUNTA DE LAPIZ # 27 G x 90 MM 
+actionMedicament["IM5077"] = "" # MISOPROSTOL (NO POS) 
 actionMedicament["201128"] = "" # Jeringa Desechable 1 ml x 27 G/ 1/2
 actionMedicament["INS1021"] = "" # CATGUT 2/0 CT/1 (HR37S) x 90 CM 
 actionMedicament["INS121"] = "" # SONDA NELATON # 8 
@@ -32,8 +35,8 @@ actionMedicament["MD0378"] = "" # METOCLOPRAMIDA CLORHIDRATO
 actionMedicament["MD0483"] = "" # RANITIDINA CLORHIDRATO  
 actionMedicament["MD70052"] = "" # OXITETRACICLINA + POLIMIXINA B OFTALMICA (Terramicina) 
 actionMedicament["N02BB02"] = "" # DIPIRONA 
-actionMedicament["MD0098"] = "MEOW = A" # CEFRADINA  
-actionMedicament["MD0046"] = "" # AMPICILINA  
+actionMedicament["MD0098"] = "VAR_0301 = B" # CEFRADINA  
+actionMedicament["MD0046"] = "VAR_0301 = B" # AMPICILINA  
 actionMedicament["IM5059"] = "" # BUPIVACAINA+DEXTROSA (BUPIROP PESADO) 
 actionMedicament["IM5073"] = "" # ETILEFRINA 
 actionMedicament["IM5112"] = "" # MISOPROSTOL (NO POS) 
@@ -66,12 +69,12 @@ actionMedicament["MD0280"] = "" # HIDROCORTISONA SUCCINATO SODICO
 actionMedicament["MD0072"] = "" # BETAMETILDIGOXINA 
 actionMedicament["MD0550"] = "" # TRAMADOL CLORHIDRATO 
 actionMedicament["IM5060"] = "" # CEFTRIAXONA 
-actionMedicament["IM5018"] = "" # AMPICILINA SODICA + SULBACTAM 
+actionMedicament["IM5018"] = "VAR_0301 = B" # AMPICILINA SODICA + SULBACTAM 
 actionMedicament["B01AB05"] = "" # ENOXAPARINA SODICA 
 actionMedicament["MD0585"] = "" # ACETATO DE MEDROXIPROGESTERONA PROVERA 
-actionMedicament["MD0097"] = "" # CEFRADINA  
+actionMedicament["MD0097"] = "VAR_0301 = B" # CEFRADINA  
 actionMedicament["MD0645"] = "" # misoPROSTOL 
-actionMedicament["MD0336"] = "" # LIDOCAINA CLORHIDRATO SIN EPINEFRINA 
+actionMedicament["MD0336"] = "VAR_0303 = B" # LIDOCAINA CLORHIDRATO SIN EPINEFRINA 
 actionMedicament["51076-03"] = "" # SOLUCION SALINA 0.9 % 
 actionMedicament["MD1039"] = "" # ONDANSETRON (NO POS) 
 actionMedicament["INS1069"] = "" # TAPON HEPARINIZADO 
