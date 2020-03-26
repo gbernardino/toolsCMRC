@@ -14,6 +14,14 @@ class QLabelSelect(QLabel):
 
 def downloadFromSQL():
     pass
+
+def loadFromCSV():
+    pass
+
+def loadFromHDF5():
+    pass
+
+
 class Data:
     def __init__(self, path = None):
         # load patients
