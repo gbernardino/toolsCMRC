@@ -129,14 +129,14 @@ def parseDate(s):
 meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 meses = meses + list(map(lambda s: s[:3], meses))
 sep= '\s*[,;:]?\s*'
-separadorFecha = '(?:[\.\\/-]|DE|DEL|\s)'
-date =  '\(?' +  '((?:[0-9]+)'+ sep + separadorFecha + sep + '(?:[0-9]+|%s)'%  '|'.join(meses) + \
-                       sep + separadorFecha + sep + '(?:[0-9]+))' + '\)?' 
+separadorFecha = '(?:[\.\\/-]|\s*DE\s*|\s*DEL\s*| )'
+date =  '\(?' +  '((?:[0-9]+)'  + separadorFecha  + '(?:[0-9]+|%s)'%  '|'.join(meses) + \
+                        separadorFecha  + '(?:[0-9]+))' + '\)?' 
 floatParse = '[0-9]*[\.,]?[0-9]+'
 
 """
 Parse epicrisis
-
+ s
 - FUM
 - ECHOS
 - PARACLINICS (TO SOME EXTENT)
@@ -159,15 +159,16 @@ def parseEchographies(t, cleanText = False):
     semanas = '(?:%s)' % '|'.join(['semanas', 'sem', 'sems'])
     embarazo = ['embarazo', 'emb', 'embarazo', 'emb', 'reporta embarazo']
 
-    echoLine = '(:?eco[a-z]*\%s|)' % sep +  date +  sep + '(?:%s)' % '|'.join(embarazo) + ' ' + '(' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas  + '[,]?)'\
-    +  '( ' + paraHoy + ' ' + floatParse + ' ' + '(:?%s)?' % semanas +  ')?' + '[^\n]*'
-
-    queryEchos = '(eco[a-z]*' + sep +  '(' + echoLine  + '\s*' ')+)'
+    echoLine = date + '[^\n]*' + '(?:%s)' % '|'.join(embarazo) + ' ' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas
+    #echoLine = '(?:eco[a-z]*\%s|)' % sep +  date  +  sep   + '(?:%s)' % '|'.join(embarazo) #+ ' ' + '(' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas  + '[,]?)'\
+    #+  '( ' + paraHoy + ' ' + floatParse + ' ' + '(:?%s)?' % semanas +  ')?' + '[^\n]*'
+    print(t, echoLine)
+    #queryEchos = '(eco[a-z]*' + sep +  '(' + echoLine  + '\s*' ')+)'
     m = re.findall(echoLine, t, re.MULTILINE)
     return m
 
 noRecuerda = ['no', '\?']
-searchFUM = re.compile('fum'+ sep + '(?::|.)?'+ sep +'(:?' +  date + '|%s)' % ('|'.join(noRecuerda)), flags = re.IGNORECASE)
+searchFUM = re.compile('fum'+ sep + '(?::|\.)?'+ sep +'(:?' +  date + '|%s)' % ('|'.join(noRecuerda)), flags = re.IGNORECASE)
 def parseGPCA_and_fum(text):
     """
     Gets the GPCA and FUM from the Triage or epicrisis.
@@ -288,6 +289,9 @@ def getMotherData(data):
             res['VAR_0032'] = 'A'
         aToxic = findInXML('aToxico', etIngreso)  == "true"
         aTransf = findInXML('aTranfusionales', etIngreso)  == "true"
+
+        #If all are false, and 1-> \n in the description, put the 
+
         #Height and weight
         try:
             res['VAR_0055'] = float(findInXML("Peso", etIngreso))
@@ -323,7 +327,11 @@ def getMotherData(data):
             res['VAR_0060'] = 'A'
         elif isinstance(m, list):
             res['no_echo'] =  'echo_confirmed'
-            #TODO: parse date
+            for i, e in enumerate(m):
+                res['echo_%d_date' % i] = str(dateparser.parse(e[0])).split()[0]
+                res['echo_%d_eg' % i] = e[1]
+                if float(e[1]) < 20:
+                    res['VAR_0060'] = 'B'
         else:
             res['no_echo'] =  'no_information'
 
@@ -449,13 +457,14 @@ def findDesgarros(text):
     #Perdida de sangre
     ver = '(?:eviden[a-z]*|observ[a-z]*|vis[a-z]*|encont[a-z]*|presen[a-z]*)'   #diferentes manaeras de escribir ver
     negative = ['(?:sin|no) (?:%s )?desgar' % ver]
-    positive = 'desgar[a-z]* (?:[a-z]* |(:?pared )?vag[a-z]* )?(?:sangr[a-z]* |no sangrant[a-z]* )?grado (i|ii|iii|1|2|3)'
+    positive = 'desgar[a-z]* (?:[a-z]* |(:?pared )?vag[a-z]* )?(?:sangr[a-z]* |no sangrant[a-z]* )?grado (i|ii|iii|1|2|3)[\. ,]'
     positiveUnidentified = '(?:%s )?desgar' % ver
 
     if re.findall('(:?%s)' % '|'.join(negative), text) or ('desgarro' not in text): #and 'sin complicaciones' in text):
         desgarro = 'no'
     elif re.findall(positive, text):
         desgarro = re.findall(positive, text)[0][1]
+        print(desgarro)
         if desgarro == 'i':
             desgarro = '1'
         elif desgarro == 'ii':
@@ -488,17 +497,19 @@ def getInformationFromProcedureDescription(data):
         fechaParto = dateparser.parse(findInXML('fechaCirugia', etDescripcion))
         horaFinCirugia  = dateparser.parse(findInXML('horaFin', etDescripcion)) #If nothing else is found, a candidate for birth
         res['VAR_0284'] = str(fechaParto.year) + '/' +  str(fechaParto.month)  + '/' + str(fechaParto.day)
-        res['VAR_0285'] = str(horaFinCirugia.hour) + ':' +  str(horaFinCirugia.minute) 
+        res['VAR_0285'] = str(horaFinCirugia.hour) +  str(horaFinCirugia.minute) 
     except TypeError:
         pass
+
     # Presentacion
     if 'cefalic' in txtDescription:
         res['VAR_202'] = 'A'
+    elif 'decubito dorsal' in txtDescription:
+        res['VAR_0202'] = 'C'
+
     # Posicion parto
     if 'en posicion de litotomia' in txtDescription:
-        res['VAR_029'] = 'C'
-    elif 'decubito dorsal' in txtDescription:
-        res['VAR_029'] = 'C'
+        res['VAR_0291'] = 'C'
 
     #Cordon umbilical
     if 'se pinza y corta cordon umbilical' in txtDescription:
@@ -506,6 +517,9 @@ def getInformationFromProcedureDescription(data):
     #Episotomia
     if 'episiotomia' in txtDescription:
         res['VAR_0292'] = 'B'
+    else:
+        res['VAR_0292'] = 'A'
+
     #Reanimacion TODO
 
     #Ocitodicos TODO
@@ -559,7 +573,7 @@ def getInformationFromProcedureDescription(data):
     if re.findall('peso (%s)' % floatParse, txtDescription):
         res['VAR_0311'] = re.findall('peso (%s)' % floatParse, txtDescription)[0].replace('.', '').replace(',', '')
     if re.findall('talla (%s)' % floatParse, txtDescription):
-        res['VAR_0314'] = re.findall('talla (%s)' % floatParse, txtDescription)[0].replace(',', '.')
+        res['VAR_0314'] = int(float(re.findall('talla (%s)' % floatParse, txtDescription)[0].replace(',', '.'))*10)
 
     #APGAR: TODO, easier to get from newborn registration, otherwise is dead.
     
@@ -594,7 +608,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     res = {}
     #prettyPrintXML(register.RegistroXML)
     res['VAR_0284']  = findInXML('InputText_FechaHoraNacimiento', etRegistro)
-    res['VAR_0283'] = findInXML('ASPxTimeEdit_HoraNacimiento', etRegistro)
+    res['VAR_0283'] = findInXML('ASPxTimeEdit_HoraNacimiento', etRegistro).replace(':', '')
     res['VAR_0198'] = findInXML('InputText_EdadGestac', etRegistro)
     EG2 = findInXML('InputText_EdadGestacDubowitzModificado', etRegistro)
     res['partoVag'] = findInXML('TexTarea_PartoVaginal', etRegistro) == 'SI'
@@ -649,6 +663,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
                 break
         except Exception as e:
             pass
+
         #Hospital discharge, and reason
         dischargeRegister = data.getNewbornLastState(idNewBornRegister)
         if dischargeRegister is not None:

@@ -65,6 +65,13 @@ class MainWindow(QMainWindow):
         self.cw = QWidget(self)
         
         self.mainLayout = QGridLayout()
+
+        #
+        self.caseSelectionWidget = 
+        self.registerSelectionWidget = 
+        self.textViewer = 
+        self.metadataViewer = 
+
         self.labelPatientAndCase = QLabelSelect('PATIENT')
         self.labelPatientAndCase.setAlignment(Qt.AlignCenter)
         self.mainLayout.addWidget(self.labelPatientAndCase, 0, 0, 1, 2)
