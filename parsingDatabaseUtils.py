@@ -11,7 +11,7 @@ import pandas, numpy as np,re
 import collections, unicodedata
 import xml, itertools, xml.etree.ElementTree as ET
 from html.parser import HTMLParser
-import dateparser
+import dateparser, datetime
 from parsingData.procedures import classificationProcedures
 
 floatParse = '[0-9]*[\.,]?[0-9]+'
@@ -112,19 +112,35 @@ def parseAntecedentes(t):
 
     return antecedentes
 
-def parseDate(s):
+def parseDate(s, output = 'list'):
     """
-    Parse dates, in their multiple possibilities
+    Parse dates, in their multiple possibilities to sting ortuples
     """
     if not isinstance(s, str):
         return s
     meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
     meses = list(map(lambda s: s[:3].lower(), meses))
     for i, m in enumerate(meses):
-        s = s.replace(m, '%d' % (i + 1))
-        
+        s = s.replace(m, '%d' % (i + 1))    
     p = re.findall('([0-9]+)[^0-9]+([0-9]+)[^0-9]+([0-9]+)', s)
-    return p[0]
+    p = p[0]
+
+    # If they are  in format year - month - day
+    if len(p[0]) == 4:
+        p = (p[2], p[1], p[0])
+
+    if output == 'timedate':
+        return datetime.datetime(day = int(p[0]), month = int(p[1]), year = int(p[2] if len(p[2]) == 4 else '20' + p[2]))
+    elif output == 'string':
+        if len(p[2]) == 2:
+            year = '20' + p[2]
+        else:
+            year = p[2]
+        return '%s-%s-%s' % (year, p[1], p[0])
+    elif output == 'list':
+        return p
+    else:
+        raise ValueError('Output format not recognised')
 
 meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 meses = meses + list(map(lambda s: s[:3], meses))
@@ -162,13 +178,12 @@ def parseEchographies(t, cleanText = False):
     echoLine = date + '[^\n]*' + '(?:%s)' % '|'.join(embarazo) + ' ' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas
     #echoLine = '(?:eco[a-z]*\%s|)' % sep +  date  +  sep   + '(?:%s)' % '|'.join(embarazo) #+ ' ' + '(' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas  + '[,]?)'\
     #+  '( ' + paraHoy + ' ' + floatParse + ' ' + '(:?%s)?' % semanas +  ')?' + '[^\n]*'
-    print(t, echoLine)
     #queryEchos = '(eco[a-z]*' + sep +  '(' + echoLine  + '\s*' ')+)'
     m = re.findall(echoLine, t, re.MULTILINE)
     return m
 
 noRecuerda = ['no', '\?']
-searchFUM = re.compile('fum'+ sep + '(?::|\.)?'+ sep +'(:?' +  date + '|%s)' % ('|'.join(noRecuerda)), flags = re.IGNORECASE)
+searchFUM = re.compile('(?:fum|ultima menstruacion)'+ sep + '(?::|\.)?'+ sep +'(:?' +  date + '|%s)' % ('|'.join(noRecuerda)), flags = re.IGNORECASE)
 def parseGPCA_and_fum(text):
     """
     Gets the GPCA and FUM from the Triage or epicrisis.
@@ -434,14 +449,13 @@ def getDateFromQuirurgicDescription(txt):
     return res
 
 def getBloodLoss(text):
-    text = text.replace(' de ', ' ').replace(' se ', ' ')
     
-    removeWords = ['lateral', 'izquierda', 'derecha', 'superior', 'inferior', 'medial']
+    removeWords = ['lateral', 'izquierda', 'derecha', 'superior', 'inferior', 'medial', 'de', 'se', 'estimada']
     for w in removeWords:
         text = text.replace(' %s ' % w, ' ')
 
     #Perdida de sangre
-    bloodLost = re.findall('perdida estimada sangre(?::)? ([0-9]+) (?:cc|ml)', text)
+    bloodLost = re.findall('(?:sangre|hematica)(?::)? ([0-9]+)(?:)?(?:cc|ml)', text)
     try:
         return bloodLost[0]
     except:
@@ -464,7 +478,6 @@ def findDesgarros(text):
         desgarro = 'no'
     elif re.findall(positive, text):
         desgarro = re.findall(positive, text)[0][1]
-        print(desgarro)
         if desgarro == 'i':
             desgarro = '1'
         elif desgarro == 'ii':
@@ -602,6 +615,9 @@ def parseAPGAR(s):
         return False
 
 def getNewbornData(data, idNewBornRegister, debug = False):
+    """
+    Paese information from 
+    """
     register = data.registrosRecienNacido[idNewBornRegister][idNewBornRegister]
 
     etRegistro = ET.fromstring(register.RegistroXML)
@@ -632,6 +648,11 @@ def getNewbornData(data, idNewBornRegister, debug = False):
         res['VAR_0310'] = 'C'
     vivo = findInXML('InputRadio_VM', etRegistro) == 'Vivo'
     
+    #FUM
+    fum = findInXML('InputText_FUM', etRegistro)
+    if fum:
+        res['FUM'] = fum
+
     #Antrhopometrics
     res['VAR_0311'] = findInXML('InputText_Peso', etRegistro).replace('.', '').replace(',', '')
     res['VAR_0314'] = findInXML('InputText_Talla', etRegistro).replace(',', '.')
@@ -664,7 +685,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
         except Exception as e:
             pass
 
-        #Hospital discharge, and reason
+        #Hospital of newborn discharge, and reason
         dischargeRegister = data.getNewbornLastState(idNewBornRegister)
         if dischargeRegister is not None:
             et = ET.fromstring(dischargeRegister.RegistroXML)

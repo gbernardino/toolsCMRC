@@ -3,6 +3,7 @@ Structure to hold the information relative to
 """
 import re, xml.etree.ElementTree as ET
 import parsingDatabaseUtils, numpy as np, collections, itertools
+import copy
 
 def similarNewbornRegister(reg1, reg2):
     """
@@ -38,6 +39,7 @@ class BirthDataset:
         self.ingreso = None
         self.motherData = pacientes.loc[str(registros.iloc[0].NumeroHistoria)]
         self.registrosRecienNacido = collections.defaultdict(dict)
+        self.order = 0 #Order of birth 0 for single birth, 1 - 2 - 3 for twins
         #Assign each register to mother/newborn or unknown
         for rId, reg in registros.iterrows():
             patient, newbornRegisterRoot = parsingDatabaseUtils.isMaternalRegister(reg, registros, rId)
@@ -56,6 +58,7 @@ class BirthDataset:
                 self.ingreso = reg
         
         self.cleanRegistersNewBorn(registros)
+
         #Find discharge of baby
         self.newbornDischarge = list(filter(lambda s:
                                        any([p in parsingDatabaseUtils.remove_diacritics(str(s.Asunto)).lower()
@@ -69,6 +72,12 @@ class BirthDataset:
         elif len(self.newbornDischarge) == 0 and len(self.registersNewborn) > 1: 
             i = np.argmax([p.FechaAsignacionRegistro for p in self.registersNewborn])
             self.newbornDischarge = self.registersNewborn[i]
+
+    def addRegisterAnesthesia(self, registers):
+        """
+        If there is no entry from the emergency room , get data from an anesthesiology visit just before.
+        """
+        pass
     def cleanRegistersNewBorn(self, registers):
         """
         Sometimes several registers are added. Clean them.
@@ -104,3 +113,20 @@ class BirthDataset:
                 if  m is None or m.FechaAsignacionRegistro < r.FechaAsignacionRegistro:
                     m = r
         return m        
+
+    def getNewbornRegister(self, num):
+        """
+        Get the register by number
+        """
+        k = list(self.registrosRecienNacido.keys())[num]
+        return self.registrosRecienNacido[k][k]
+
+    def splitTwins(self):
+        twins = []
+        for i, k in enumerate(self.registrosRecienNacido):
+            p = copy.copy(self)
+            p.registrosRecienNacido = {k : self.registrosRecienNacido[k] }
+            p.order = i + 1
+            twins.append(p)
+        return twins
+

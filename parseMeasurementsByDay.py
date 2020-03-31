@@ -223,6 +223,14 @@ def getParaClinicsHospitalisation(data):
             resultNotes += noteResult
     return resultNotes
 
+
+def getParaClinicsNewbornRegistry(r): 
+    txt = findInXML('TexTarea_AntecedentesMaternosPrenatales' , r)
+    txt = fullCleanTxt(txt)
+    result = parseParaclinicsFromText(txt, r.FechaAsignacionRegistro.split()[0])
+    return result
+
+
 def getAllMotherParaclinics(data):
     if data.epicrisis is not None:
         resultsEpi = parseParaclinicsBeforeHospitalisation(data.epicrisis)
@@ -230,3 +238,19 @@ def getAllMotherParaclinics(data):
         resultsEpi = []
     resultNotes = getParaClinicsHospitalisation(data)
     return resultsEpi + resultNotes
+
+
+def measurementsToDict(measurements, name = 'day'):
+    res = {}
+    dfMeasurements = pandas.DataFrame(data = measurements, columns =['Campo', 'Fecha', 'Valor'])
+    dfMeasurements.Valor = dfMeasurements.Valor.map(lambda s: s.replace(',', '.') if isinstance(s, str) else s)
+    dfMeasurements.Valor = dfMeasurements.Valor.astype(float)
+    dfMeasurementsByDate = dfMeasurements.groupby('Fecha')
+    for i, d in enumerate(dfMeasurementsByDate.groups):
+        dfValues =dfMeasurementsByDate.get_group(d).groupby('Campo')['Valor'].agg(['median', 'max', 'min'])
+        res['%s+%d' % (name,i)] = d
+        for var, row in dfValues.iterrows():
+            res[var + '_median_%s_%d' % (name,i)] = row.median()
+            res[var + '_max_%s_%d' % (name,i)] = row.max()
+            res[var + '_min_%s_%d' % (name,i)] = row.min()
+    return res
