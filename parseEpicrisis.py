@@ -36,31 +36,6 @@ def parseAntecedentes(t):
 
     return antecedentes
 
-
-
-def parseEchographies(t, cleanText = False):
-    """
-    Finds the echos. Returns False if it is stated in the report that there were no echos, or a list  if some echos were found. An empty list is non conclusive
-    """
-    # Cleaning
-    if cleanText:
-        t = cleanString(t).lower()
-        t = removeWords(t, ['a', 'de', 'el', 'que', 'para'])
-
-    if 'no trae eco' in t or 'ni eco' in t:
-        return False
-    paraHoyPossibilities = ['hoy', 'para dia hoy']
-    paraHoy = '(?:%s)' % '|'.join(paraHoyPossibilities)
-    semanas = '(?:%s)' % '|'.join(['semanas', 'sem', 'sems'])
-    embarazo = ['embarazo', 'emb', 'embarazo', 'emb', 'reporta embarazo']
-
-    echoLine = '(?:\(|)' + date + '(?:\)|)' + '[^\n]*' + '(?:%s)' % '|'.join(embarazo) + ' ' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas
-    #echoLine = '(?:eco[a-z]*\%s|)' % sep +  date  +  sep   + '(?:%s)' % '|'.join(embarazo) #+ ' ' + '(' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas  + '[,]?)'\
-    #+  '( ' + paraHoy + ' ' + floatParse + ' ' + '(:?%s)?' % semanas +  ')?' + '[^\n]*'
-    #queryEchos = '(eco[a-z]*' + sep +  '(' + echoLine  + '\s*' ')+)'
-    m = re.findall(echoLine, t, re.MULTILINE)
-    return m
-
 noRecuerda = ['no', '\?']
 def parseGPCA_and_fum(text):
     """
@@ -108,6 +83,11 @@ def getAlta(txt, newborn = False ):
     else:
         return 'unknown'
 
+def normalizeVenezuelanName(s):
+    s = str(s)
+    s = s.lower().replace('ven', 'v').replace('v', 'VEN')
+    return s
+    
 def getMotherData(data):
     """
     Parse the data relative to the mother and general pregnancy (from patient info, epicrisis and admision to the emergency room)
@@ -149,7 +129,7 @@ def getMotherData(data):
         res['VAR_0015'] = 'B'
 
     res['VAR_0018'] = '806001061-8'
-    res['VAR_0019'] = data.motherData.Identificacion 
+    res['VAR_0019'] = normalizeVenezuelanName(data.motherData.Identificacion) 
     
     #Edad maternal
     res['VAR_0009'] =  dateparser.parse(data.epicrisis.FechaAsignacionRegistro )-  dateparser.parse(res['VAR_0006'])
@@ -224,25 +204,7 @@ def getDataFromEpicrisis(data):
                 res['VAR_0057'] = '07/06/1954'
             else:
                 res['VAR_0059'] = 'B'
-                res['VAR_0057'] = '/'.join(parseDate(gpca_fum['fum']))
-
-        #Echos
-        #TODO: CODE RESTRUCTURED, IT SHOULD GO SOMEWHERE ELSE (parseEchos.py)
-        if False:
-            res['VAR_0060'] = 'A'
-            m = parseEchographies(antececedentesText)
-            if m is False:
-                res['no_echo'] = 'no_echo_confirmed'
-            elif isinstance(m, list):
-                res['no_echo'] =  'echo_confirmed'
-                for i, e in enumerate(m):
-                    res['echo_%d_date' % i] = e[0]
-                    res['echo_%d_eg' % i] = e[1]
-                    if tofloat(e[1]) < 20:
-                        res['VAR_0060'] = 'B'
-
-            else:
-                res['no_echo'] =  'no_information'
+                res['VAR_0057'] = parseDate(gpca_fum['fum'], 'string')
 
         #Ingreso
         res['VAR_0183'] = data.casoDesc.FechaHora.split('.')[0]

@@ -93,7 +93,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     
     #FUM
     fum = findInXML('InputText_FUM', etRegistro)
-    if fum:
+    if fum.strip():
         res['VAR_0057'] = fum
     else:
         #Parse from "TexTarea_AntecedentesMaternosPrenatales"
@@ -104,7 +104,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
 
         if allFUM:
             
-            fum = allFUM[0]
+            fum = allFUM[0][0] 
             if  fum in ['?', 'no']:
                 res['VAR_0059'] =  'A'
                 res['VAR_0057'] = '07/06/1954'

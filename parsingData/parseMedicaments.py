@@ -1,6 +1,10 @@
 actionMedicament = {} 
-actionMedicament["MD0431"] = "" # Oxiticina
-actionMedicament["IM5081"] = "" # AGUJA ESPINAL TIPO PUNTA DE LAPIZ # 27 G x 90 MM 
+actionMedicament["MD0431"] = "OXITOCINA = SI" # Oxiticina
+actionMedicament["IM5081"] = "" # AGUJA ESPINAL TIPO PUNTA DE LAPIZ # 27 G x 90 MM
+actionMedicament["IM5014"] = ""
+actionMedicament['MD0175'] = "" #DICLOXACILINA
+actionMedicament['MD0185'] = "" # DIMENHIDRINATO
+actionMedicament["MD1013"] = "" #CEFEPIMA
 actionMedicament["IM5077"] = "" # MISOPROSTOL (NO POS) 
 actionMedicament["201128"] = "" # Jeringa Desechable 1 ml x 27 G/ 1/2
 actionMedicament["INS1021"] = "" # CATGUT 2/0 CT/1 (HR37S) x 90 CM 
@@ -10,8 +14,10 @@ actionMedicament["INS225"] = "" # Jeringa Desechable 10 ml x 21 G/1 1/2
 actionMedicament["MD0006"] = "" # ACETAMINOFEN 
 actionMedicament["MD0239"] = "" # FITOMENADIONA 
 actionMedicament["MD0259"] = "" # GENTAMICINA 3 % 
-actionMedicament["MD0430"] = "" # OXITOCINA 
-actionMedicament["MD0284"] = "" # SULFATO FERROSO 
+actionMedicament["MD0430"] = "OXITOCINA = SI" # OXITOCINA 
+actionMedicament["MD0284"] = "HIERRO = SI" # SULFATO FERROSO 
+actionMedicament["MD0529"] = "" #
+actionMedicament["MD0267"] = "" # GLUCONATO DE POTASIO ELIXIR
 actionMedicament["19972965-01"] = "" # SOLUCION SALINA 0.9 %
 actionMedicament["51076-02"] = "" # SOLUCION SALINA 0.9 % 
 actionMedicament["IM5034"] = "" # MORFINA CLORHIDRATO 
@@ -47,7 +53,7 @@ actionMedicament["IM5431"] = "" # misOPROStol (NO POS)
 actionMedicament["MD0202"] = "" # ERITROMICINA ETILSUCCINATO O ESTEARATO 
 actionMedicament["MD0880"] = "" # BETAMETASONA 
 actionMedicament["MD0441"] = "" # PENICILINA G BENZATINICA 
-actionMedicament["MD0351"] = "" # SULFATO DE MAGNESIO 
+actionMedicament["MD0351"] = "MAGNESIO = SI" # SULFATO DE MAGNESIO 
 actionMedicament["MD0649"] = "" # NIFEDIPINO 
 actionMedicament["IM5130"] = "" # misoPROSTOL (NO POS) 
 actionMedicament["MD0685"] = "" # ENOXAPARINA SODICA 

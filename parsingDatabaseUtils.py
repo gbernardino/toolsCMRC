@@ -19,6 +19,11 @@ pars =HTMLParser()
 cleanWhites = re.compile("[^\S\n]+")
 fullCleanTxt  = lambda s: cleanString(remove_diacritics(str(s))).lower() 
 
+
+def addZeros(s, d):
+    s = str(s)
+    return '0' * (d - len(str(s))) + s 
+
 def findInXML(s, et): 
     if isinstance(et, str):
         et = ET.fromstring(et)
@@ -125,11 +130,18 @@ def parseDate(s, output = 'list'):
     p = re.findall('([0-9]+)[^0-9]+([0-9]+)[^0-9]+([0-9]+)', s)
     p = p[0]
 
+    #Quick fix, of some mistakes
+    if p[0] in ['219', '201'] and len(p[2]) == 2:
+        p = ('2019', p[1], p[2])
+    if p[2] in ['219', '201'] and len(p[0]) == 2:
+        p = (p[0], p[1], '2019')
+
     # If they are  in format year - month - day
     if len(p[0]) == 4:
         p = (p[2], p[1], p[0])
-
-    if output == 'timedate':
+    if int(p[1]) > 12:
+        p = (p[1], p[0], p[2])
+    if output == 'datetime':
         return datetime.datetime(day = int(p[0]), month = int(p[1]), year = int(p[2] if len(p[2]) == 4 else '20' + p[2]))
     elif output == 'string':
         if len(p[2]) == 2:
@@ -343,7 +355,7 @@ def getMotherData(data):
         elif isinstance(m, list):
             res['no_echo'] =  'echo_confirmed'
             for i, e in enumerate(m):
-                res['echo_%d_date' % i] = str(dateparser.parse(e[0])).split()[0]
+                res['echo_%d_date' % i] =   str(dateparser.parse(e[0])).split()[0]
                 res['echo_%d_eg' % i] = e[1]
                 if float(e[1]) < 20:
                     res['VAR_0060'] = 'B'
@@ -427,8 +439,7 @@ def getMotherData(data):
                 res['VAR_0381'] = 'Cuidados intermedios'
                 res['VAR_0382'] = 'C'
         #Edad maternal
-        res['VAR_0009'] =  dateparser.parse(data.epicrisis.FechaAsignacionRegistro )-  dateparser.parse(res['VAR_0006'])
-        res['VAR_0009'] = int(res['VAR_0009'].days/365.25)
+        res['VAR_0009'] = dateDifferenceDays( data.epicrisis.FechaAsignacionRegistro, res['VAR_0006']) / 365.25
         res['VAR_0010'] = 'A' if res['VAR_0009'] >= 15 and 35 >= res['VAR_0009'] else 'B' 
     #Parto aborto
     res['VAR_0182'] = 'A' if classificationProcedures[data.procTypeId] == 'p'  else ''
@@ -490,6 +501,13 @@ def findDesgarros(text):
     else:
         desgarro = 'unknown'
     return desgarro
+
+
+def dateDifferenceDays(d1, d2):
+    p1 = parseDate(d1, 'datetime') if isinstance(d1, str) else d1
+    p2 = parseDate(d2, 'datetime') if isinstance(d2, str) else d2
+    return (p1 - p2).days
+
 
 #####
 # Info from newborn

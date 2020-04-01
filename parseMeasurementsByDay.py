@@ -1,6 +1,6 @@
 from parsingDatabaseUtils import cleanString, floatParse, fullCleanTxt, findInXML, removeWords, parseDate
 import pandas, numpy as np,re
-import collections, datetime
+import collections, datetime, parsingDatabaseUtils
 import xml, itertools, xml.etree.ElementTree as ET
 
 
@@ -60,8 +60,8 @@ def parseVitalSignsFromRegister(r):
             if pressure:
                 pressure = '/'.join(pressure[0])
     if pressure:
-        res += [('Pas', fecha, pressure.split('/')[0])]
-        res += [('Pad', fecha, pressure.split('/')[1])]
+        res += [('Pas', fecha, pressure.split('/')[0], r.FechaAsignacionRegistro)]
+        res += [('Pad', fecha, pressure.split('/')[1], r.FechaAsignacionRegistro)]
 
     # FC
     fc = findInXML('FrecuenciaCardiaca', et)
@@ -71,7 +71,7 @@ def parseVitalSignsFromRegister(r):
             if fc:
                 fc = fc[0]
     if fc:
-        res += [('hr', fecha, fc)]
+        res += [('hr', fecha, fc, r.FechaAsignacionRegistro)]
 
     # RR
     rr = findInXML('FrecuenciaRespiratoria', et)
@@ -81,7 +81,7 @@ def parseVitalSignsFromRegister(r):
             if rr:
                 rr = rr[0]
     if rr:
-        res += [('rr', fecha, rr)]
+        res += [('rr', fecha, rr, r.FechaAsignacionRegistro)]
 
     # T    
     temperature = findInXML('Temperatura', et)
@@ -91,7 +91,7 @@ def parseVitalSignsFromRegister(r):
             if temperature:
                 temperature = temperature[0]
     if temperature:
-        res += [('T', fecha, temperature)]
+        res += [('T', fecha, temperature, r.FechaAsignacionRegistro)]
     return res
 
 def getVitalSignsFromEntry(entry):
@@ -101,15 +101,15 @@ def getVitalSignsFromEntry(entry):
     res = ()
     dateRegister = entry.FechaRegistro.split()[0]
     if entry.CodSignoVitalTipo == 'PRSI' or entry.CodSignoVitalTipo == 'PAS':
-        res= ('Pas', dateRegister, entry.Valor)
+        res= ('Pas', dateRegister, entry.Valor, dateRegister)
     elif entry.CodSignoVitalTipo == 'PRDI' or entry.CodSignoVitalTipo == 'PAD':
-        res =('Pad', dateRegister, entry.Valor)
+        res =('Pad', dateRegister, entry.Valor, dateRegister)
     elif entry.CodSignoVitalTipo in ['FRCA', 'FC']:
-        res = ('hr', dateRegister, entry.Valor)
+        res = ('hr', dateRegister, entry.Valor, dateRegister)
     elif entry.CodSignoVitalTipo in ['FRRE', 'FR']:
-        res = ('rr', dateRegister, entry.Valor)
+        res = ('rr', dateRegister, entry.Valor, dateRegister)
     elif entry.CodSignoVitalTipo == 'T':
-        res = ('T', dateRegister, entry.Valor)
+        res = ('T', dateRegister, entry.Valor, dateRegister)
     return res
 
 def getAllVitalSigns(data):
@@ -155,13 +155,13 @@ sep= '\s*[,;:]?\s*'
 separadorFecha = '(?:[\.\\/-]|DE|DEL|\s)'
 date =  ' \(?' +  '((?:[0-9]|[0-3][0-9])'+ sep + separadorFecha + sep + '(?:[0-9]+|%s)'%  '|'.join(meses) + \
                        sep + separadorFecha + sep + '(?:[0-9]+))' + '\)?' 
-def parseParaclinicsFromText(txt, date):
+def parseParaclinicsFromText(txt, date, datehour):
     results = []
     #haematology
     for p, v in hematology.items():
         hematologyRes = re.findall('%s (%s)[^x]' % (v, floatParse), txt, re.IGNORECASE)
         if hematologyRes:
-            results += [(p, date, hematologyRes[0][1])]
+            results += [(p, date, hematologyRes[0][1], datehour)]
 
     #sifilis
     sif1 = ' ' + vdrl + " (%s)" % '|'.join(pos + neg)
@@ -169,9 +169,9 @@ def parseParaclinicsFromText(txt, date):
     sif2 = ' ' + prt + " (%s)" % '|'.join(pos + neg)    
     searchSif2 = re.findall(sif2, txt, re.IGNORECASE)
     if searchSif1:
-        results += [('vdrl', date, searchSif1[0][1] in pos)]
+        results += [('vdrl', date, searchSif1[0][1] in pos, datehour)]
     if searchSif2:
-        results += [('prt', date, searchSif2[0][1] in pos)]
+        results += [('prt', date, searchSif2[0][1] in pos, datehour)]
     # TODO: vih
     return results
           
@@ -188,7 +188,7 @@ def parseParaclinicsBeforeHospitalisation(r):
     lastDate = None
     results = []
     if re.findall('(no|sin|ni) (prese[a-z]*|tien[a-z]*|tra[a-z]*)(\s)*para', rTxt):
-        results  += [('controlesPrenatal', 'sinControles', 'True' )]
+        results  += [('controlesPrenatal', 'sinControles', 0, 'NONE' )]
         return results
     
     for i, l in enumerate(rTxt.splitlines()):
@@ -199,15 +199,12 @@ def parseParaclinicsBeforeHospitalisation(r):
         #dFiltered = [dd for dd in dFiltered if dd]
 
         if len(d) == 1.:
-            dateParsed = parseDate(d[0])
-            if dateParsed:
-                #lastDate ='%02d/%02d/%d' %(dateParsed.day, dateParsed.month, dateParsed.year)
-                lastDate = '/'.join(dateParsed)
+            dateParsed = parseDate(d[0], output = 'string')
         elif len(d):
             lastDate = None
             
         if len(d) <= 1 and lastDate:
-            r = parseParaclinicsFromText(l, lastDate)
+            r = parseParaclinicsFromText(l, lastDate, lastDate)
             results += r
     return results
                 
@@ -218,7 +215,7 @@ def getParaClinicsHospitalisation(data):
         if not txt:
           continue
         txt = fullCleanTxt(txt)
-        noteResult = parseParaclinicsFromText(txt, r.FechaAsignacionRegistro.split()[0])
+        noteResult = parseParaclinicsFromText(txt, r.FechaAsignacionRegistro.split()[0], r.FechaAsignacionRegistro)
         if noteResult:
             resultNotes += noteResult
     return resultNotes
@@ -227,7 +224,7 @@ def getParaClinicsHospitalisation(data):
 def getParaClinicsNewbornRegistry(r): 
     txt = findInXML('TexTarea_AntecedentesMaternosPrenatales' , r)
     txt = fullCleanTxt(txt)
-    result = parseParaclinicsFromText(txt, r.FechaAsignacionRegistro.split()[0])
+    result = parseParaclinicsFromText(txt, r.FechaAsignacionRegistro.split()[0], r.FechaAsignacionRegistro)
     return result
 
 
@@ -240,17 +237,51 @@ def getAllMotherParaclinics(data):
     return resultsEpi + resultNotes
 
 
-def measurementsToDict(measurements, name = 'day'):
+def measurementsToDict(dfMeasurements, name = 'day'):
     res = {}
-    dfMeasurements = pandas.DataFrame(data = measurements, columns =['Campo', 'Fecha', 'Valor'])
-    dfMeasurements.Valor = dfMeasurements.Valor.map(lambda s: s.replace(',', '.') if isinstance(s, str) else s)
-    dfMeasurements.Valor = dfMeasurements.Valor.astype(float)
     dfMeasurementsByDate = dfMeasurements.groupby('Fecha')
     for i, d in enumerate(dfMeasurementsByDate.groups):
         dfValues =dfMeasurementsByDate.get_group(d).groupby('Campo')['Valor'].agg(['median', 'max', 'min'])
-        res['%s+%d' % (name,i)] = d
+        res['%s_%d' % (name,i)] = d
         for var, row in dfValues.iterrows():
             res[var + '_median_%s_%d' % (name,i)] = row.median()
             res[var + '_max_%s_%d' % (name,i)] = row.max()
             res[var + '_min_%s_%d' % (name,i)] = row.min()
+    return res
+
+def processPrenatalMeasurements(measurementsControlsPrenatal, fum):
+    res = {}
+    for test, date, value, _ in measurementsControlsPrenatal.values:
+        if test in ['vdrl', 'HB', 'prt']:
+            weeks = parsingDatabaseUtils.dateDifferenceDays(date, fum)//7
+            if weeks < 0:
+                #print('Error, negative weeks found')
+                res['negative_week'] = True
+                #raise ValueError('Inconsistent!')
+
+            elif weeks <= 20:
+                if test == 'vdrl':
+                    #no treponemica
+                    res['VAR_0112'] = 'A' if not value else 'B'
+                    res['VAR_0412'] = weeks # Weeks
+
+                elif test == 'prt':
+                    #treponemica
+                    res['VAR_0415'] = 'A' if not value else 'B'
+                    res['VAR_0413'] = weeks # Weeks
+
+                elif test == 'HB':
+                    res['VAR_0095'] = value
+
+            elif weeks > 20 and weeks < 60:
+                if test == 'vdrl':
+                    res['VAR_0114'] = 'A' if not value else 'B'
+                    res['VAR_0419'] = weeks # Weeks
+
+                elif test == 'prt':
+                    res['VAR_0421'] = 'A' if not value else 'B'
+                    res['VAR_0420'] = weeks # Weeks
+
+                elif test == 'HB':
+                    res['VAR_0099'] = value
     return res
