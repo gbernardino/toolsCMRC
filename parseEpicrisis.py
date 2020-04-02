@@ -6,7 +6,7 @@ Parse epicrisis
 - PARACLINICS (TO SOME EXTENT)
 """
 from parsingDatabaseUtils import cleanString, removeWords, floatParse, date, sep,findInXML, remove_diacritics, parseDate, searchFUM
-import re, dateparser
+import re, dateparser, parsingDatabaseUtils
 import xml, itertools, xml.etree.ElementTree as ET
 from parsingData.procedures import classificationProcedures
 
@@ -87,7 +87,7 @@ def normalizeVenezuelanName(s):
     s = str(s)
     s = s.lower().replace('ven', 'v').replace('v', 'VEN')
     return s
-    
+
 def getMotherData(data):
     """
     Parse the data relative to the mother and general pregnancy (from patient info, epicrisis and admision to the emergency room)
@@ -132,7 +132,7 @@ def getMotherData(data):
     res['VAR_0019'] = normalizeVenezuelanName(data.motherData.Identificacion) 
     
     #Edad maternal
-    res['VAR_0009'] =  dateparser.parse(data.epicrisis.FechaAsignacionRegistro )-  dateparser.parse(res['VAR_0006'])
+    res['VAR_0009'] = parseDate(data.epicrisis.FechaAsignacionRegistro,'datetime')-  parseDate(res['VAR_0006'],'datetime')
     res['VAR_0009'] = int(res['VAR_0009'].days/365.25)
     res['VAR_0010'] = 'A' if res['VAR_0009'] >= 15 and 35 >= res['VAR_0009'] else 'B' 
 
@@ -204,7 +204,7 @@ def getDataFromEpicrisis(data):
                 res['VAR_0057'] = '07/06/1954'
             else:
                 res['VAR_0059'] = 'B'
-                res['VAR_0057'] = parseDate(gpca_fum['fum'], 'string')
+                res['VAR_0057'] = parsingDatabaseUtils.parseDateInRangetRange(gpca_fum['fum'], data.procedure.FechaRegistro)
 
         #Ingreso
         res['VAR_0183'] = data.casoDesc.FechaHora.split('.')[0]

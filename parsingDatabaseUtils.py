@@ -117,7 +117,7 @@ def parseAntecedentes(t):
 
     return antecedentes
 
-def parseDate(s, output = 'list'):
+def parseDate(s, output = 'list', invertMonthDays = False):
     """
     Parse dates, in their multiple possibilities to sting ortuples
     """
@@ -125,7 +125,10 @@ def parseDate(s, output = 'list'):
         return s
     meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
     meses = list(map(lambda s: s[:3].lower(), meses))
+    monthInText = False
     for i, m in enumerate(meses):
+        if m in s:
+            monthInText = True
         s = s.replace(m, '%d' % (i + 1))    
     p = re.findall('([0-9]+)[^0-9]+([0-9]+)[^0-9]+([0-9]+)', s)
     p = p[0]
@@ -139,8 +142,9 @@ def parseDate(s, output = 'list'):
     # If they are  in format year - month - day
     if len(p[0]) == 4:
         p = (p[2], p[1], p[0])
-    if int(p[1]) > 12:
+    if not monthInText and (int(p[1]) > 12 or invertMonthDays):
         p = (p[1], p[0], p[2])
+
     if output == 'datetime':
         return datetime.datetime(day = int(p[0]), month = int(p[1]), year = int(p[2] if len(p[2]) == 4 else '20' + p[2]))
     elif output == 'string':
@@ -153,6 +157,26 @@ def parseDate(s, output = 'list'):
         return p
     else:
         raise ValueError('Output format not recognised')
+
+def parseDateInRangetRange(d1, d2, rangeDays = (7*32, 7*46)):
+    """
+    Compare using a correct date 
+    """
+    d2 = parseDate(d2.split()[0], 'datetime')
+    for invert in [False, True]:
+        try:
+            d1Parsed = parseDate(d1, 'datetime', invert)
+            diff = (d2 - d1Parsed).days
+            if diff < rangeDays[1] and diff > rangeDays[0]:
+                break
+        except Exception as e:
+            #If the parsing failed, just continue
+            pass
+    else:
+        return ''
+        raise ValueError('Incorrect date: not in range')
+    return '%d-%02d-%02d' %(d1Parsed.year, d1Parsed.month, d1Parsed.day)
+
 
 meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 meses = meses + list(map(lambda s: s[:3], meses))
@@ -345,7 +369,7 @@ def getMotherData(data):
                 res['VAR_0057'] = '07/06/1954'
             else:
                 res['VAR_0059'] = 'B'
-                res['VAR_0057'] = '/'.join(parseDate(gpca_fum['fum']))
+                res['VAR_0057'] = gpca_fum['fum']
 
         #Echos
         m = parseEchographies(antececedentesText)

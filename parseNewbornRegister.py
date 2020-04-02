@@ -3,7 +3,7 @@ Parse mother and newborn information
 
 TODO: the newborn register also has information on the mother background and previous illnesses, as well as the tests done.
 """
-import re
+import re, parsingDatabaseUtils
 from parsingDatabaseUtils import findInXML, cleanString, removeWords, remove_diacritics, searchFUM, parseDate
 import xml.etree.ElementTree as ET
 
@@ -94,7 +94,7 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     #FUM
     fum = findInXML('InputText_FUM', etRegistro)
     if fum.strip():
-        res['VAR_0057'] = fum
+        res['VAR_0057'] = parsingDatabaseUtils.parseDateInRangetRange(fum, data.procedure.FechaRegistro)
     else:
         #Parse from "TexTarea_AntecedentesMaternosPrenatales"
         antececedentesText = findInXML('TexTarea_AntecedentesMaternosPrenatales', etRegistro)
@@ -103,14 +103,13 @@ def getNewbornData(data, idNewBornRegister, debug = False):
         allFUM = searchFUM.findall(antececedentesText)
 
         if allFUM:
-            
             fum = allFUM[0][0] 
             if  fum in ['?', 'no']:
                 res['VAR_0059'] =  'A'
                 res['VAR_0057'] = '07/06/1954'
             else:
                 res['VAR_0059'] = 'B'
-                res['VAR_0057'] = fum
+                res['VAR_0057'] = parsingDatabaseUtils.parseDateInRangetRange(fum, data.procedure.FechaRegistro)
 
     #Get echos and paraclinics
     #TODO <- important for the registers that did not enter through the emergency room

@@ -51,6 +51,7 @@ def parseEchographies(t, cleanText = False):
     semanas = '(?:%s)' % '|'.join(['semanas', 'sem', 'sems'])
     embarazo = ['embarazo', 'emb', 'embarazo', 'emb', 'reporta embarazo']
 
+    # TODO: A hoy
     echoLine = '(?:\(|)' + date + '(?:\)|)' + '[^\n]*' + '(?:%s)' % '|'.join(embarazo) + ' ' + '(?P<weeksEG>%s)' % floatParse  + ' ' + semanas
     m = re.findall(echoLine, t, re.MULTILINE)
     return m
