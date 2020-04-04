@@ -188,7 +188,7 @@ def parseParaclinicsBeforeHospitalisation(r):
     lastDate = None
     results = []
     if re.findall('(no|sin|ni) (prese[a-z]*|tien[a-z]*|tra[a-z]*)(\s)*para', rTxt):
-        results  += [('controlesPrenatal', 'sinControles', 0, 'NONE' )]
+        results  += [('controlesPrenatal', '1954-06-07', 0, 'NONE' )]
         return results
     
     for i, l in enumerate(rTxt.splitlines()):

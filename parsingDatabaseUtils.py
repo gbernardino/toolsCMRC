@@ -138,6 +138,10 @@ def parseDate(s, output = 'list', invertMonthDays = False):
         p = ('2019', p[1], p[2])
     if p[2] in ['219', '201'] and len(p[0]) == 2:
         p = (p[0], p[1], '2019')
+    if p[0] in ['218', '208'] and len(p[2]) == 2:
+        p = ('2018', p[1], p[2])
+    if p[2] in ['218', '208'] and len(p[0]) == 2:
+        p = (p[0], p[1], '2018')
 
     # If they are  in format year - month - day
     if len(p[0]) == 4:
@@ -366,7 +370,7 @@ def getMotherData(data):
         if gpca_fum['fum_OK']:
             if  gpca_fum['fum'] in ['?', 'no']:
                 res['VAR_0059'] =  'A'
-                res['VAR_0057'] = '07/06/1954'
+                res['VAR_0057'] = ''
             else:
                 res['VAR_0059'] = 'B'
                 res['VAR_0057'] = gpca_fum['fum']
@@ -549,13 +553,13 @@ def getInformationFromProcedureDescription(data):
     #Fecha parto
     # TODO: beware of laboors that are near 12 am
     try:
-        fechaParto = dateparser.parse(findInXML('fechaCirugia', etDescripcion))
-        horaFinCirugia  = dateparser.parse(findInXML('horaFin', etDescripcion)) #If nothing else is found, a candidate for birth
-        res['VAR_0284'] = str(fechaParto.year) + '/' +  str(fechaParto.month)  + '/' + str(fechaParto.day)
-        res['VAR_0285'] = str(horaFinCirugia.hour) +  str(horaFinCirugia.minute) 
+        fechaParto = etDescripcion.find('.//fechaCirugia').text
+        fecha = ' '.join(fechaParto.split()[0:-1]).lower()
+        hour = ' '.join(fechaParto.split()[-1])
+        res['VAR_0284'] = parseDate(fecha, 'string')
+        res['VAR_0283'] = hour[0:2] + hour[3:4]
     except TypeError:
         pass
-
     # Presentacion
     if 'cefalic' in txtDescription:
         res['VAR_202'] = 'A'

@@ -52,7 +52,7 @@ actionMedicament["MD0236"] = "" # FENTANILO CITRATO
 actionMedicament["IM5431"] = "" # misOPROStol (NO POS) 
 actionMedicament["MD0202"] = "" # ERITROMICINA ETILSUCCINATO O ESTEARATO 
 actionMedicament["MD0880"] = "" # BETAMETASONA 
-actionMedicament["MD0441"] = "" # PENICILINA G BENZATINICA 
+actionMedicament["MD0441"] = "SIFILIS = SI" # PENICILINA G BENZATINICA 
 actionMedicament["MD0351"] = "MAGNESIO = SI" # SULFATO DE MAGNESIO 
 actionMedicament["MD0649"] = "" # NIFEDIPINO 
 actionMedicament["IM5130"] = "" # misoPROSTOL (NO POS) 

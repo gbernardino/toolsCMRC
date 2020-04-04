@@ -57,10 +57,16 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     #prettyPrintXML(register.RegistroXML)
     res['VAR_0284']  = parseDate(findInXML('InputText_FechaHoraNacimiento', etRegistro), output = 'string')
     res['VAR_0283'] = findInXML('ASPxTimeEdit_HoraNacimiento', etRegistro).replace(':', '').split()[0]
-    res['VAR_0198'] = findInXML('InputText_EdadGestac', etRegistro)
+    try:
+        eg = float(findInXML('InputText_EdadGestac', etRegistro).strip())
+        if eg >= 32 and eg <= 46:
+            res['VAR_0198'] = eg
+            res['VAR_0199'] = 0
+    except:
+        pass
     EG2 = findInXML('InputText_EdadGestacDubowitzModificado', etRegistro)
-    res['partoVag'] = findInXML('TexTarea_PartoVaginal', etRegistro) == 'SI'
-    partoC = findInXML('TexTarea_PartoCesaria', etRegistro) == 'SI'
+    res['partoVag'] =  'SI' in findInXML('TexTarea_PartoVaginal', etRegistro) 
+    partoC = 'SI' in findInXML('TexTarea_PartoCesaria', etRegistro) 
     res['VAR_0190'] = 'A' if res['partoVag'] else 'B'
     apgar =  parseAPGAR(findInXML('InputText_APGAR', etRegistro))
     try:
@@ -83,14 +89,37 @@ def getNewbornData(data, idNewBornRegister, debug = False):
     #Antrhopometrics
     res['VAR_0311'] = findInXML('InputText_Peso', etRegistro).replace('.', '').replace(',', '')
     res['VAR_0314'] = findInXML('InputText_Talla', etRegistro).replace(',', '.')
-    res['VAR_0313'] = findInXML('InputText_CC', etRegistro).replace(',', '.')
+    res['VAR_0313'] = float(findInXML('InputText_CC', etRegistro).replace(',', '.')) *10
     
     #As a double check of GAPC
     res['VAR_0040'] = findInXML('InputText_ObstetricosGestaciones', etRegistro)
     res['VAR_0041'] = findInXML('InputText_ObstetricosAbortos', etRegistro)
     res['VAR_0046'] = findInXML('InputText_ObstetricosPartos', etRegistro)
     res['VAR_0047'] = findInXML('InputText_ObstetricosCesareas', etRegistro)
-    
+
+    #Presentacion
+    presentacion = remove_diacritics(findInXML('InputText_Presentacion', etRegistro)).lower()
+    if 'cefal' in presentacion:
+        res['VAR_0202'] = 'A'
+    elif 'pelv'in presentacion or 'pod' in presentacion:
+        res['VAR_0202'] = 'B'
+    elif  'trans' in presentacion:
+        res['VAR_0202'] = 'C'
+
+
+    #Check wether it is big enoughInputText_Calsificacion
+
+
+    #TexTarea_AtencionNeonatalReanimacion -> reanimacion
+    reanimacion = remove_diacritics(findInXML('reanimacion', etRegistro)).lower()
+    if 'no se requirio reanimacion':
+        res['VAR_0323'] = 'A'
+        res['VAR_0324'] = 'A'
+        res['VAR_0325'] = 'A'
+        res['VAR_0326'] = 'A'
+        res['VAR_0327'] = 'A'
+        res['VAR_0328'] = 'A'
+
     #FUM
     fum = findInXML('InputText_FUM', etRegistro)
     if fum.strip():
